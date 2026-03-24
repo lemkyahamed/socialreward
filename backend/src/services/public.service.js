@@ -1,0 +1,72 @@
+const Campaign = require('../models/Campaign');
+const AppError = require('../utils/appError');
+
+const getPublicCampaigns = async (queryFilters) => {
+  const { search, platform, category, sort = 'newest', page = 1, limit = 10 } = queryFilters;
+
+  // Base query: only live campaigns
+  const filter = { status: 'live' };
+
+  if (search) {
+    filter.$or = [
+      { title: { $regex: search, $options: 'i' } },
+      { shortDescription: { $regex: search, $options: 'i' } }
+    ];
+  }
+
+  if (platform) filter.platform = platform;
+  if (category) filter.category = category;
+
+  let sortOption = { createdAt: -1 };
+  if (sort === 'reward') {
+    sortOption = { rewardAmount: -1 };
+  } else if (sort === 'oldest') {
+    sortOption = { createdAt: 1 };
+  }
+
+  const skip = (page - 1) * limit;
+
+  const campaigns = await Campaign.find(filter)
+    .sort(sortOption)
+    .skip(skip)
+    .limit(limit * 1)
+    .select('-__v -fullDescription'); // Don't send full desc in list view to save BW
+
+  const total = await Campaign.countDocuments(filter);
+
+  return {
+    campaigns,
+    totalPages: Math.ceil(total / limit),
+    currentPage: parseInt(page, 10),
+    totalCampaigns: total
+  };
+};
+
+const getCampaignBySlug = async (slug) => {
+  const campaign = await Campaign.findOne({ slug, status: 'live' }).populate({
+    path: 'brandId',
+    select: 'email',
+    populate: { path: 'brandProfile' } // we will need to lookup brand profile slightly differently if not populated smoothly
+  });
+
+  if (!campaign) {
+    throw new AppError('Campaign not found or not live', 404);
+  }
+
+  return campaign;
+};
+
+// Optional: view count increment
+const incrementCampaignView = async (id) => {
+  await Campaign.updateOne(
+    { _id: id, status: 'live' },
+    { $inc: { 'stats.views': 1 } }
+  );
+  return true;
+};
+
+module.exports = {
+  getPublicCampaigns,
+  getCampaignBySlug,
+  incrementCampaignView
+};
