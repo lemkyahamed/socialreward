@@ -22,13 +22,17 @@ export function Auth({ mode = "login" }) {
     const formData = new FormData(e.target)
     const email = formData.get("email")
     const password = formData.get("password")
+    const profileName = formData.get("profileName")
 
     try {
       let userData
       if (mode === "login") {
         userData = await apiLogin(email, password)
       } else {
-        userData = await apiRegister({ email, password, role })
+        const profilePayload = role === 'creator' 
+          ? { displayName: profileName } 
+          : { companyName: profileName };
+        userData = await apiRegister({ email, password, role, profile: profilePayload })
       }
 
       // Check URL parameters for redirect
@@ -110,6 +114,13 @@ export function Auth({ mode = "login" }) {
           )}
 
           <div className="space-y-4">
+            {mode === "register" && (
+              <div className="space-y-2">
+                <Label htmlFor="profileName">{role === 'creator' ? 'Display Name' : 'Company Name'}</Label>
+                <Input id="profileName" name="profileName" type="text" placeholder={role === 'creator' ? 'Your Name' : 'Company Ltd'} required className="h-12 rounded-xl" />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email address</Label>
               <Input id="email" name="email" type="email" placeholder="you@example.com" required className="h-12 rounded-xl" />

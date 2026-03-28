@@ -1,5 +1,5 @@
 import React from "react"
-import { Users, Target, ShieldAlert, Activity } from "lucide-react"
+import { Users, Target, ShieldAlert, Activity, Loader2 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { StatWidget } from "../../components/ui/StatWidget"
@@ -7,11 +7,21 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Ca
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { mockAdminStats, mockSystemLogs } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
 
 export function AdminDashboard() {
-  const chartData = mockAdminStats.userGrowth
-  const recentLogs = mockSystemLogs.slice(0, 5)
+  const { data: stats, loading } = useApi('/admin/dashboard')
+
+  const chartData = stats?.userGrowth || []
+  const recentLogs = stats?.recentActivity || []
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-12">
@@ -23,28 +33,26 @@ export function AdminDashboard() {
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatWidget 
           title="Total Users" 
-          value={mockAdminStats.totalUsers} 
+          value={stats?.totalUsers || 0} 
           icon={Users} 
-          trend="up" 
-          trendValue="+12.5% vs LW"
         />
         <StatWidget 
           title="Active Campaigns" 
-          value={mockAdminStats.liveCampaigns} 
+          value={stats?.liveCampaigns || 0} 
           icon={Target} 
         />
         <StatWidget 
           title="System Alerts" 
-          value={mockAdminStats.suspiciousItems} 
+          value={stats?.suspiciousItems || 0} 
           icon={ShieldAlert} 
           className="ring-2 ring-red-500/10"
         />
         <StatWidget 
           title="Background Jobs" 
-          value={mockAdminStats.failedJobs > 0 ? "Failing" : "Healthy"} 
+          value={stats?.failedJobs > 0 ? "Failing" : "Healthy"} 
           icon={Activity} 
-          trend={mockAdminStats.failedJobs > 0 ? "down" : "up"}
-          trendValue={mockAdminStats.failedJobs > 0 ? `${mockAdminStats.failedJobs} errors` : "All operational"}
+          trend={stats?.failedJobs > 0 ? "down" : "up"}
+          trendValue={stats?.failedJobs > 0 ? `${stats?.failedJobs} errors` : "All operational"}
         />
       </div>
 
@@ -102,19 +110,19 @@ export function AdminDashboard() {
               </TableHeader>
               <TableBody>
                 {recentLogs.map((log) => (
-                  <TableRow key={log.id} className="border-zinc-50 dark:border-zinc-800/50">
+                  <TableRow key={log._id} className="border-zinc-50 dark:border-zinc-800/50">
                     <TableCell className="px-8 py-4">
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-zinc-950 dark:text-zinc-50 truncate max-w-[120px]">{log.jobName}</span>
-                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">System Worker</span>
+                        <span className="text-sm font-bold text-zinc-950 dark:text-zinc-50 truncate max-w-[120px]">{log.action?.replace(/_/g, ' ')}</span>
+                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">{log.entityType}</span>
                       </div>
                     </TableCell>
                     <TableCell className="py-4">
                       <Badge 
-                        variant={log.status === "Success" ? "primary" : "outline"}
-                        className="rounded-lg font-black text-[10px]"
+                        variant="primary"
+                        className="rounded-lg font-black text-[10px] capitalize"
                       >
-                        {log.status}
+                        {log.actorUserId?.role || 'system'}
                       </Badge>
                     </TableCell>
                   </TableRow>

@@ -1,13 +1,14 @@
 import React from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Star, ShieldCheck, Zap, TrendingUp } from "lucide-react"
+import { ArrowRight, Star, ShieldCheck, Zap, TrendingUp, Loader2 } from "lucide-react"
 import { Button } from "../../components/ui/Button"
 import { CampaignCard } from "../../components/shared/CampaignCard"
-import { mockCampaigns } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
 import { Card } from "../../components/ui/Card"
 
 export function Home() {
-  const featuredCampaigns = mockCampaigns.slice(0, 3)
+  const { data, loading, error } = useApi('/public/campaigns');
+  const featuredCampaigns = data?.campaigns?.slice(0, 3) || [];
 
   return (
     <div className="flex flex-col">
@@ -103,9 +104,19 @@ export function Home() {
           </div>
 
           <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredCampaigns.map((campaign) => (
-              <CampaignCard key={campaign.id} campaign={campaign} />
-            ))}
+            {loading ? (
+              <div className="col-span-full flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+              </div>
+            ) : error ? (
+              <div className="col-span-full text-center text-red-500 py-12">{error}</div>
+            ) : featuredCampaigns.length === 0 ? (
+              <div className="col-span-full text-center text-zinc-500 py-12">No campaigns found.</div>
+            ) : (
+              featuredCampaigns.map((campaign) => (
+                <CampaignCard key={campaign._id} campaign={campaign} />
+              ))
+            )}
           </div>
         </div>
       </section>

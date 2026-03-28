@@ -13,8 +13,8 @@ const createCampaign = asyncHandler(async (req, res, next) => {
 });
 
 const getCampaigns = asyncHandler(async (req, res, next) => {
-  const campaigns = await brandService.getCampaigns(req.user.id, req.query);
-  res.status(200).json({ status: 'success', data: { campaigns } });
+  const result = await brandService.getCampaigns(req.user.id, req.query);
+  res.status(200).json({ status: 'success', data: result });
 });
 
 const getCampaign = asyncHandler(async (req, res, next) => {
@@ -38,6 +38,11 @@ const getSubmissions = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: result });
 });
 
+const getSubmission = asyncHandler(async (req, res, next) => {
+  const submission = await brandService.getSubmissionById(req.user.id, req.params.id);
+  res.status(200).json({ status: 'success', data: { submission } });
+});
+
 const approveSubmission = asyncHandler(async (req, res, next) => {
   const submission = await brandService.reviewSubmission(req.user.id, req.params.id, 'approve');
   res.status(200).json({ status: 'success', data: { submission } });
@@ -53,8 +58,8 @@ const rejectSubmission = asyncHandler(async (req, res, next) => {
 });
 
 const getPayouts = asyncHandler(async (req, res, next) => {
-  const payouts = await brandService.getPayouts(req.user.id, req.query);
-  res.status(200).json({ status: 'success', data: { payouts } });
+  const result = await brandService.getPayouts(req.user.id, req.query);
+  res.status(200).json({ status: 'success', data: result });
 });
 
 const markPayoutPaid = asyncHandler(async (req, res, next) => {
@@ -71,6 +76,7 @@ module.exports = {
   updateCampaign,
   updateCampaignStatus,
   getSubmissions,
+  getSubmission,
   approveSubmission,
   rejectSubmission,
   getPayouts,

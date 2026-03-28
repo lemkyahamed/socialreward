@@ -12,8 +12,8 @@ const getCampaigns = asyncHandler(async (req, res, next) => {
 });
 
 const getJoined = asyncHandler(async (req, res, next) => {
-  const joined = await creatorService.getJoinedCampaigns(req.user.id);
-  res.status(200).json({ status: 'success', data: { joined } });
+  const result = await creatorService.getJoinedCampaigns(req.user.id);
+  res.status(200).json({ status: 'success', data: { items: result } });
 });
 
 const joinCampaign = asyncHandler(async (req, res, next) => {
@@ -28,12 +28,13 @@ const submitWork = asyncHandler(async (req, res, next) => {
 
 const getSubmissions = asyncHandler(async (req, res, next) => {
   const submissions = await creatorService.getSubmissions(req.user.id, req.params.campaignId);
-  res.status(200).json({ status: 'success', data: { submissions } });
+  res.status(200).json({ status: 'success', data: { items: submissions } });
 });
 
 const getEarnings = asyncHandler(async (req, res, next) => {
   const earnings = await creatorService.getEarnings(req.user.id);
-  res.status(200).json({ status: 'success', data: earnings });
+  const { records, ...stats } = earnings;
+  res.status(200).json({ status: 'success', data: { items: records, stats } });
 });
 
 module.exports = {

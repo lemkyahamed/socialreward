@@ -35,18 +35,20 @@ const getPublicCampaigns = async (queryFilters) => {
   const total = await Campaign.countDocuments(filter);
 
   return {
-    campaigns,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalCampaigns: total
+    items: campaigns,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
 };
 
 const getCampaignBySlug = async (slug) => {
   const campaign = await Campaign.findOne({ slug, status: 'live' }).populate({
     path: 'brandId',
-    select: 'email',
-    populate: { path: 'brandProfile' } // we will need to lookup brand profile slightly differently if not populated smoothly
+    select: 'email'
   });
 
   if (!campaign) {

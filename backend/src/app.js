@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -33,6 +34,9 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
+// Serve static files from the 'uploads' directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Base route for healthcheck
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is running' });
@@ -44,12 +48,14 @@ const publicRouter = require('./routes/public.routes');
 const creatorRouter = require('./routes/creator.routes');
 const brandRouter = require('./routes/brand.routes');
 const adminRouter = require('./routes/admin.routes');
+const uploadRouter = require('./routes/upload.routes');
 
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/creator', creatorRouter);
 app.use('/api/brand', brandRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/upload', uploadRouter);
 
 // Unhandled route handler
 app.use((req, res, next) => {

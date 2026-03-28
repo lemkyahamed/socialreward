@@ -1,5 +1,5 @@
-import React from "react"
-import { DollarSign, ArrowUpRight, ArrowDownRight, FileText } from "lucide-react"
+import React, { useMemo } from "react"
+import { DollarSign, ArrowUpRight, ArrowDownRight, FileText, Loader2 } from "lucide-react"
 import { EmptyState } from "../../components/ui/EmptyState"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { StatWidget } from "../../components/ui/StatWidget"
@@ -7,10 +7,46 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Ca
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { mockSubmissions } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
+import api from "../../lib/api"
 
 export function PayoutSummary() {
-  const allPayouts = mockSubmissions.filter(s => s.status !== "rejected")
+  const { data, loading } = useApi('/brand/payouts')
+  const allPayouts = data?.items || []
+
+  const [processingId, setProcessingId] = React.useState(null)
+
+  const handleMarkPaid = async (payoutId) => {
+    setProcessingId(payoutId)
+    try {
+      await api.post(`/brand/payouts/${payoutId}/mark-paid`)
+      window.location.reload()
+    } catch (err) {
+      alert(err.response?.data?.message || err.message)
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const metrics = useMemo(() => {
+    let disbursed = 0;
+    let pending = 0;
+    
+    allPayouts.forEach(p => {
+      if (p.status === 'paid' || p.status === 'approved') disbursed += p.amount;
+      if (p.status === 'pending') pending += p.amount;
+    });
+
+    return { disbursed, pending, escrow: pending + disbursed }; // simplistic view
+  }, [allPayouts]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-12">
@@ -23,17 +59,17 @@ export function PayoutSummary() {
       <div className="grid gap-6 sm:grid-cols-3">
         <StatWidget 
           title="Life-time Disbursed" 
-          value="$24,500.00" 
+          value={`$${metrics.disbursed.toLocaleString()}`} 
           icon={ArrowUpRight} 
         />
         <StatWidget 
           title="Escrow Balance" 
-          value="$12,042.80" 
+          value="$0.00" 
           icon={DollarSign} 
         />
         <StatWidget 
           title="Awaiting Payout" 
-          value="$1,450.00" 
+          value={`$${metrics.pending.toLocaleString()}`} 
           icon={ArrowDownRight} 
           className="ring-2 ring-brand-500/10"
         />
@@ -56,27 +92,33 @@ export function PayoutSummary() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allPayouts.map((sub) => (
-                <TableRow key={sub.id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+              {allPayouts.map((payout) => (
+                <TableRow key={payout._id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
                   <TableCell className="px-8 py-5">
                     <div className="flex items-center gap-3">
-                      <img src={sub.creatorAvatar} className="h-8 w-8 rounded-full shadow-sm" alt="" />
-                      <span className="font-bold text-zinc-950 dark:text-zinc-50">{sub.creatorName}</span>
+                      <img src={payout.creatorId?.avatar || `https://ui-avatars.com/api/?name=${payout.creatorId?.firstName}`} className="h-8 w-8 rounded-full shadow-sm" alt="" />
+                      <span className="font-bold text-zinc-950 dark:text-zinc-50">{payout.creatorId?.firstName} {payout.creatorId?.lastName}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="py-5 text-sm font-medium text-zinc-600 dark:text-zinc-400">{sub.campaignTitle}</TableCell>
-                  <TableCell className="py-5 text-sm font-bold text-zinc-500">{new Date(sub.submittedAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="py-5 font-display text-lg font-black text-zinc-900 dark:text-zinc-50 text-right">{sub.rewardAmt}</TableCell>
+                  <TableCell className="py-5 text-sm font-medium text-zinc-600 dark:text-zinc-400">{payout.campaignId?.title}</TableCell>
+                  <TableCell className="py-5 text-sm font-bold text-zinc-500">{new Date(payout.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell className="py-5 font-display text-lg font-black text-zinc-900 dark:text-zinc-50 text-right">${payout.amount?.toLocaleString()}</TableCell>
                   <TableCell className="py-5">
                     <Badge 
-                      variant={sub.status === "approved" ? "primary" : "outline"}
-                      className="rounded-lg font-black"
+                      variant={payout.status === "paid" ? "success" : payout.status === "approved" ? "primary" : "outline"}
+                      className="rounded-lg font-black capitalize"
                     >
-                      {sub.status === "approved" ? "Settled" : "Processing"}
+                      {payout.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-8 py-5 text-right">
-                    <Button variant="ghost" size="sm" className="font-bold text-brand-600 hover:text-brand-500">Invoice</Button>
+                    {payout.status === 'approved' ? (
+                      <Button onClick={() => handleMarkPaid(payout._id)} disabled={processingId === payout._id} variant="outline" size="sm" className="font-bold border-brand-200 text-brand-600 hover:bg-brand-50">
+                        {processingId === payout._id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Paid"}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="font-bold text-zinc-400 hover:text-zinc-600">Invoice</Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

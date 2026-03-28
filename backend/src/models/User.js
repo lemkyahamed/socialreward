@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema(
     },
     refreshTokenVersion: {
       type: Number,
-      default: 0
+      default: 0,
+      select: false
     }
   },
   {

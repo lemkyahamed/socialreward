@@ -14,11 +14,49 @@ const getDashboardStats = async (brandId) => {
 
   const totalSubmissions = await Submission.countDocuments({ campaignId: { $in: campaignIds } });
   const approvedSubmissions = await Submission.countDocuments({ campaignId: { $in: campaignIds }, reviewStatus: 'approved' });
+  const submissionsPending = await Submission.countDocuments({ campaignId: { $in: campaignIds }, reviewStatus: 'pending' });
   
   const approvalRate = totalSubmissions > 0 ? (approvedSubmissions / totalSubmissions) * 100 : 0;
 
   const payouts = await Payout.find({ brandId, status: { $in: ['approved', 'paid'] } });
   const totalSpend = payouts.reduce((acc, curr) => acc + curr.amount, 0);
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const spendAggregation = await Payout.aggregate([
+    {
+      $match: {
+        brandId: new mongoose.Types.ObjectId(brandId),
+        status: { $in: ['approved', 'paid'] },
+        createdAt: { $gte: sixMonthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } },
+        spend: { $sum: "$amount" }
+      }
+    }
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const spendHistory = [];
+  
+  for (let i = 0; i < 6; i++) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    
+    const found = spendAggregation.find(a => a._id.month === m && a._id.year === y);
+    spendHistory.push({
+      month: monthNames[m - 1],
+      spend: found ? found.spend : 0
+    });
+  }
 
   const recentSubmissions = await Submission.find({ campaignId: { $in: campaignIds } })
     .sort({ createdAt: -1 })
@@ -28,9 +66,10 @@ const getDashboardStats = async (brandId) => {
 
   return {
     activeCampaigns,
-    totalSubmissions,
-    approvalRate: Math.round(approvalRate * 10) / 10,
+    submissionsPending,
+    avgApprovalRate: `${Math.round(approvalRate * 10) / 10}%`,
     totalSpend,
+    spendHistory,
     recentSubmissions
   };
 };
@@ -58,9 +97,26 @@ const createCampaign = async (brandId, campaignData) => {
   return campaign;
 };
 
-const getCampaigns = async (brandId, queryFilters) => {
-  const campaigns = await Campaign.find({ brandId }).sort({ createdAt: -1 });
-  return campaigns;
+const getCampaigns = async (brandId, queryFilters = {}) => {
+  const { page = 1, limit = 10 } = queryFilters;
+  const skip = (page - 1) * limit;
+
+  const campaigns = await Campaign.find({ brandId })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit * 1);
+
+  const total = await Campaign.countDocuments({ brandId });
+
+  return {
+    items: campaigns,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
+  };
 };
 
 const getCampaignById = async (brandId, campaignId) => {
@@ -139,11 +195,30 @@ const getSubmissions = async (brandId, campaignId, queryFilters) => {
   const total = await Submission.countDocuments(filter);
 
   return {
-    submissions,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalSubmissions: total
+    items: submissions,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
+};
+
+const getSubmissionById = async (brandId, submissionId) => {
+  const submission = await Submission.findById(submissionId)
+    .populate('campaignId')
+    .populate('creatorId', 'firstName lastName avatar email');
+    
+  if (!submission) {
+    throw new AppError('Submission not found', 404);
+  }
+
+  if (submission.campaignId.brandId.toString() !== brandId.toString()) {
+    throw new AppError('You do not own this campaign', 403);
+  }
+
+  return submission;
 };
 
 const reviewSubmission = async (brandId, submissionId, action, reason) => {
@@ -214,19 +289,33 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
   return submission;
 };
 
-const getPayouts = async (brandId, queryFilters) => {
-  const { status, campaignId } = queryFilters;
+const getPayouts = async (brandId, queryFilters = {}) => {
+  const { status, campaignId, page = 1, limit = 20 } = queryFilters;
   
   const filter = { brandId };
   if (status) filter.status = status;
   if (campaignId) filter.campaignId = campaignId;
 
+  const skip = (page - 1) * limit;
+
   const payouts = await Payout.find(filter)
     .populate('campaignId', 'title slug')
-    .populate('creatorId', 'email')
-    .sort({ createdAt: -1 });
+    .populate('creatorId', 'email firstName lastName avatar')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit * 1);
 
-  return payouts;
+  const total = await Payout.countDocuments(filter);
+
+  return {
+    items: payouts,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
+  };
 };
 
 const markPayoutPaid = async (brandId, payoutId, paymentReference) => {
@@ -263,6 +352,7 @@ module.exports = {
   updateCampaign,
   updateCampaignStatus,
   getSubmissions,
+  getSubmissionById,
   reviewSubmission,
   getPayouts,
   markPayoutPaid

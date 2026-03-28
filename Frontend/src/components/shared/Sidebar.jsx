@@ -4,8 +4,11 @@ import { Rocket, LogOut } from "lucide-react"
 import { cn } from "../../utils"
 import { Button } from "../ui/Button"
 
+import { useAuth } from "../../contexts/AuthContext"
+
 export function Sidebar({ navItems }) {
   const location = useLocation()
+  const { logout } = useAuth()
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800/50 dark:bg-zinc-950 md:flex">
@@ -49,12 +52,14 @@ export function Sidebar({ navItems }) {
 
       {/* Footer Area / Logout */}
       <div className="border-t border-zinc-100 p-4 dark:border-zinc-800/50">
-        <Link to="/login">
-          <Button variant="ghost" className="w-full justify-start text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400">
-            <LogOut className="mr-3 h-5 w-5 opacity-70" />
-            Sign Out
-          </Button>
-        </Link>
+        <Button 
+          onClick={logout} 
+          variant="ghost" 
+          className="w-full justify-start text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+        >
+          <LogOut className="mr-3 h-5 w-5 opacity-70" />
+          Sign Out
+        </Button>
       </div>
     </aside>
   )

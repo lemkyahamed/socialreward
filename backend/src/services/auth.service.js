@@ -25,15 +25,17 @@ const registerUser = async (userData) => {
     role
   });
 
+  const userObj = user.toObject();
+
   // 4. Create associated profile based on role
   if (role === 'creator') {
-    await CreatorProfile.create({
+    userObj.profile = await CreatorProfile.create({
       userId: user._id,
       displayName: profile.displayName || email.split('@')[0],
       // Adding empty defaults if needed
     });
   } else if (role === 'brand') {
-    await BrandProfile.create({
+    userObj.profile = await BrandProfile.create({
       userId: user._id,
       companyName: profile.companyName || email.split('@')[0],
       // Adding empty defaults if needed
@@ -43,12 +45,12 @@ const registerUser = async (userData) => {
   // 5. Generate Tokens
   const tokens = generateTokens(user);
 
-  return { user, ...tokens };
+  return { user: userObj, ...tokens };
 };
 
 const loginUser = async (email, password) => {
   // 1. Check if user exists && password is correct
-  const user = await User.findOne({ email }).select('+passwordHash');
+  const user = await User.findOne({ email }).select('+passwordHash +refreshTokenVersion');
 
   if (!user || !(await user.comparePassword(password, user.passwordHash))) {
     throw new AppError('Incorrect email or password', 401);
@@ -61,10 +63,17 @@ const loginUser = async (email, password) => {
 
   // 3. Increment refresh token version to invalidate old refresh tokens (optional on login, typical on password change, but good for security if we want single-device login. Let's keep it simple for now and not invalidate previous tokens on regular login unless desired).
 
+  const userObj = user.toObject();
+  if (user.role === 'creator') {
+    userObj.profile = await CreatorProfile.findOne({ userId: user._id });
+  } else if (user.role === 'brand') {
+    userObj.profile = await BrandProfile.findOne({ userId: user._id });
+  }
+
   // 4. Generate Tokens
   const tokens = generateTokens(user);
 
-  return { user, ...tokens };
+  return { user: userObj, ...tokens };
 };
 
 const invalidateAllTokens = async (userId) => {

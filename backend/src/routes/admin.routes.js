@@ -20,6 +20,7 @@ router.patch('/users/:id/status', validate(updateUserStatusSchema), adminControl
 
 router.get('/campaigns', adminController.getCampaigns);
 router.patch('/campaigns/:id/status', validate(updateCampaignStatusAdminSchema), adminController.updateCampaignStatus);
+router.delete('/campaigns/:id', adminController.deleteCampaign);
 
 router.get('/suspicious', adminController.getSuspicious);
 router.patch('/suspicious/:id', validate(updateSuspiciousFlagSchema), adminController.updateSuspiciousStatus);

@@ -1,5 +1,5 @@
 import React from "react"
-import { DollarSign, ArrowUpRight, Clock, CheckCircle2 } from "lucide-react"
+import { DollarSign, ArrowUpRight, Clock, CheckCircle2, Loader2 } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { StatWidget } from "../../components/ui/StatWidget"
@@ -7,11 +7,23 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Ca
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { mockCreatorStats, mockSubmissions } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
+import { EmptyState } from "../../components/ui/EmptyState"
 
 export function EarningsPage() {
-  const approvedSubmissions = mockSubmissions.filter(s => s.status === "approved" || s.status === "pending")
-  const chartData = mockCreatorStats.recentEarnings
+  const { data: earningsData, loading: earningsLoading } = useApi('/creator/earnings')
+  const { data: dashboardData } = useApi('/creator/dashboard')
+
+  const records = earningsData?.records || []
+  const chartData = dashboardData?.recentEarnings || []
+
+  if (earningsLoading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-12">
@@ -24,17 +36,17 @@ export function EarningsPage() {
       <div className="grid gap-6 sm:grid-cols-3">
         <StatWidget 
           title="Available Balance" 
-          value="$1,250.00" 
+          value={`$${(earningsData?.paidOut || 0).toLocaleString()}`} 
           icon={DollarSign} 
         />
         <StatWidget 
           title="Pending Clearance" 
-          value="$512.45" 
+          value={`$${(earningsData?.pendingPayout || 0).toLocaleString()}`} 
           icon={Clock} 
         />
         <StatWidget 
           title="Life-time Earnings" 
-          value={mockCreatorStats.totalEarnings} 
+          value={`$${(earningsData?.totalEarned || 0).toLocaleString()}`} 
           icon={ArrowUpRight} 
         />
       </div>
@@ -91,21 +103,27 @@ export function EarningsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {approvedSubmissions.map((sub) => (
-                    <TableRow key={sub.id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
-                      <TableCell className="px-8 py-5 font-bold text-zinc-950 dark:text-zinc-50">{sub.campaignTitle}</TableCell>
-                      <TableCell className="py-5 font-display text-lg font-black text-green-600 dark:text-green-400 text-right">{sub.rewardAmt}</TableCell>
-                      <TableCell className="py-5 text-sm font-bold text-zinc-500">{new Date(sub.submittedAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="px-8 py-5">
-                        <Badge 
-                          variant={sub.status === "approved" ? "primary" : "outline"}
-                          className="rounded-lg font-black"
-                        >
-                          {sub.status === "approved" ? "Cleared" : "Pending"}
-                        </Badge>
-                      </TableCell>
+                  {records.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-zinc-500 py-6">No transactions found</TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    records.map((payout) => (
+                      <TableRow key={payout._id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                        <TableCell className="px-8 py-5 font-bold text-zinc-950 dark:text-zinc-50">{payout.campaignId?.title || "Campaign"}</TableCell>
+                        <TableCell className="py-5 font-display text-lg font-black text-green-600 dark:text-green-400 text-right">${payout.amount?.toLocaleString()}</TableCell>
+                        <TableCell className="py-5 text-sm font-bold text-zinc-500">{new Date(payout.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell className="px-8 py-5">
+                          <Badge 
+                            variant={payout.status === "paid" ? "success" : payout.status === "approved" ? "primary" : "outline"}
+                            className="rounded-lg font-black capitalize"
+                          >
+                            {payout.status === "paid" ? "Paid Out" : payout.status === "approved" ? "Cleared" : "Pending"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

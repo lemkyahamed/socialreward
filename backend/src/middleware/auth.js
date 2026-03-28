@@ -22,7 +22,7 @@ const protect = asyncHandler(async (req, res, next) => {
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_ACCESS_SECRET);
 
   // 3) Check if user still exists
-  const currentUser = await User.findById(decoded.id);
+  const currentUser = await User.findById(decoded.id).select('+refreshTokenVersion');
   if (!currentUser) {
     return next(new AppError('The user belonging to this token no longer exists.', 401));
   }

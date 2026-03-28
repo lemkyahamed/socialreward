@@ -22,9 +22,7 @@ const getCampaign = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({
     status: 'success',
-    data: {
-      campaign: campaignData
-    }
+    data: campaignData
   });
 });
 

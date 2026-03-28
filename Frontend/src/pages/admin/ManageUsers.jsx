@@ -1,5 +1,5 @@
-import React, { useState } from "react"
-import { Search, ShieldBan, MoreHorizontal } from "lucide-react"
+import React, { useState, useEffect } from "react"
+import { Search, ShieldBan, MoreHorizontal, Loader2, Play } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Input } from "../../components/ui/Input"
 import { Button } from "../../components/ui/Button"
@@ -7,15 +7,36 @@ import { Card, CardContent } from "../../components/ui/Card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Pagination } from "../../components/ui/Pagination"
-import { mockUsers } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
+import { usePagination } from "../../hooks/usePagination"
+import api from "../../lib/api"
 
 export function ManageUsers() {
-  const [searchTerm, setSearchTerm] = useState("")
+  const { 
+    items: users, 
+    pagination, 
+    loading, 
+    search: searchTerm, 
+    setSearch: setSearchTerm, 
+    filters, 
+    updateFilters,
+    page,
+    setPage,
+    refetch 
+  } = usePagination("/admin/users", { limit: 10 });
 
-  const filteredUsers = mockUsers.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const roleFilter = filters.role || "all";
+  const totalPages = pagination.totalPages || 1;
+
+  const handleStatusChange = async (userId, newStatus) => {
+    try {
+      await api.patch(`/admin/users/${userId}/status`, { status: newStatus });
+      alert("User status updated");
+      await refetch();
+    } catch(err) {
+      alert("Failed to update status");
+    }
+  }
 
   return (
     <div className="space-y-12">
@@ -37,14 +58,20 @@ export function ManageUsers() {
         </div>
         <div className="flex shrink-0 gap-3">
           <div className="relative">
-            <select className="h-14 appearance-none rounded-2xl border border-zinc-200 bg-white px-6 pr-12 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 cursor-pointer shadow-soft">
+            <select 
+              className="h-14 appearance-none rounded-2xl border border-zinc-200 bg-white px-6 pr-12 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500/10 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 cursor-pointer shadow-soft"
+              value={roleFilter}
+              onChange={(e) => {
+                updateFilters({ role: e.target.value === 'all' ? undefined : e.target.value })
+                setPage(1)
+              }}
+            >
               <option value="all">Global (All Roles)</option>
               <option value="creator">Creators Only</option>
               <option value="brand">Brand Partners</option>
               <option value="admin">Administrators</option>
             </select>
           </div>
-          <Button variant="outline" className="h-14 px-6 rounded-2xl font-bold border-zinc-200 dark:border-zinc-800 shadow-soft">Apply Filters</Button>
         </div>
       </div>
 
@@ -61,46 +88,60 @@ export function ManageUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map(user => (
-                <TableRow key={user.id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
-                  <TableCell className="px-8 py-6">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-brand-600">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-zinc-950 dark:text-zinc-50">{user.name}</span>
-                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-tight">{user.email}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-6">
-                    <Badge 
-                      variant={user.role === 'admin' ? 'primary' : user.role === 'brand' ? 'outline' : 'outline'} 
-                      className="rounded-lg px-3 py-1 font-black uppercase tracking-tight"
-                    >
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="py-6 text-sm font-bold text-zinc-500">{new Date(user.joinedAt).toLocaleDateString()}</TableCell>
-                  <TableCell className="py-6">
-                    <Badge 
-                      variant={user.status === 'active' ? 'primary' : 'outline'} 
-                      className="rounded-lg px-3 py-1 font-black uppercase tracking-tight"
-                    >
-                      {user.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="px-8 py-6 text-right">
-                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-zinc-100 transition-colors">
-                      <MoreHorizontal className="h-5 w-5" />
-                    </Button>
+              {loading && users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-24 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-brand-500" />
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                users.map(user => (
+                  <TableRow key={user._id} className="border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
+                    <TableCell className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-black text-xs text-brand-600">
+                          {user.email.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-zinc-950 dark:text-zinc-50">{user.email.split('@')[0]}</span>
+                          <span className="text-xs font-bold text-zinc-400 uppercase tracking-tight">{user.email}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-6">
+                      <Badge 
+                        variant={user.role === 'admin' ? 'primary' : user.role === 'brand' ? 'outline' : 'outline'} 
+                        className="rounded-lg px-3 py-1 font-black uppercase tracking-tight"
+                      >
+                        {user.role}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="py-6 text-sm font-bold text-zinc-500">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="py-6">
+                      <Badge 
+                        variant={user.status === 'active' ? 'primary' : 'outline'} 
+                        className="rounded-lg px-3 py-1 font-black uppercase tracking-tight"
+                      >
+                        {user.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-8 py-6 text-right">
+                      {user.status === 'active' ? (
+                        <Button onClick={() => handleStatusChange(user._id, 'suspended')} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" title="Suspend User">
+                          <ShieldBan className="h-5 w-5" />
+                        </Button>
+                      ) : (
+                        <Button onClick={() => handleStatusChange(user._id, 'active')} variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-green-500 hover:bg-green-50 dark:hover:bg-green-950/30 transition-colors" title="Activate User">
+                          <Play className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
-          {filteredUsers.length === 0 && (
+          {!loading && users.length === 0 && (
             <div className="py-20 text-center">
               <span className="font-display text-lg font-bold text-zinc-400">No matching accounts located</span>
             </div>
@@ -108,9 +149,9 @@ export function ManageUsers() {
         </CardContent>
       </Card>
       
-      {filteredUsers.length > 0 && (
-        <div className="pt-4">
-          <Pagination currentPage={1} totalPages={12} onPageChange={() => {}} />
+      {!loading && users.length > 0 && (
+        <div className="pt-4 flex justify-end">
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
     </div>

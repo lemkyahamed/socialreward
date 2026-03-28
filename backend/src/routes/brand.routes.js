@@ -23,6 +23,7 @@ router.patch('/campaigns/:id', validate(updateCampaignSchema), brandController.u
 router.patch('/campaigns/:id/status', validate(updateCampaignStatusSchema), brandController.updateCampaignStatus);
 
 router.get('/campaigns/:id/submissions', brandController.getSubmissions);
+router.get('/submissions/:id', brandController.getSubmission);
 router.post('/submissions/:id/approve', brandController.approveSubmission);
 router.post('/submissions/:id/reject', validate(reviewSubmissionSchema), brandController.rejectSubmission);
 

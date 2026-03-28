@@ -13,9 +13,47 @@ const getDashboardStats = async (creatorId) => {
   
   const submissionsCount = await Submission.countDocuments({ creatorId });
   const approvalsCount = await Submission.countDocuments({ creatorId, reviewStatus: 'approved' });
+  const pendingApprovals = await Submission.countDocuments({ creatorId, reviewStatus: 'pending' });
 
   const payouts = await Payout.find({ creatorId, status: { $in: ['approved', 'paid'] } });
   const totalEarnings = payouts.reduce((acc, curr) => acc + curr.amount, 0);
+
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  const earningsAggregation = await Payout.aggregate([
+    {
+      $match: {
+        creatorId: new mongoose.Types.ObjectId(creatorId),
+        status: { $in: ['approved', 'paid'] },
+        createdAt: { $gte: sixMonthsAgo }
+      }
+    },
+    {
+      $group: {
+        _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } },
+        amount: { $sum: "$amount" }
+      }
+    }
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const recentEarnings = [];
+  
+  for (let i = 0; i < 6; i++) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    
+    const found = earningsAggregation.find(a => a._id.month === m && a._id.year === y);
+    recentEarnings.push({
+      month: monthNames[m - 1],
+      amount: found ? found.amount : 0
+    });
+  }
 
   const recentSubmissions = await Submission.find({ creatorId })
     .sort({ createdAt: -1 })
@@ -23,11 +61,13 @@ const getDashboardStats = async (creatorId) => {
     .populate('campaignId', 'title slug');
 
   return {
-    activeCampaignsCount,
+    activeCampaigns: activeCampaignsCount,
     submissionsCount,
-    approvalsCount,
+    pendingApprovals,
     totalEarnings,
-    recentSubmissions
+    recentEarnings,
+    recentSubmissions,
+    reachLimit: "10K+" // fallback since reach is not modeled yet
   };
 };
 
@@ -66,10 +106,13 @@ const getCampaignsWithJoinStatus = async (creatorId, queryFilters) => {
   }));
 
   return {
-    campaigns: campaignsWithStatus,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalCampaigns: total
+    items: campaignsWithStatus,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
 };
 
@@ -140,6 +183,11 @@ const submitWork = async (creatorId, campaignId, submissionData) => {
   const campaign = await Campaign.findById(campaignId);
   if (!campaign || campaign.status !== 'live') {
     throw new AppError('Campaign is not currently accepting submissions', 400);
+  }
+
+  const existingSubmission = await Submission.findOne({ creatorId, campaignId });
+  if (existingSubmission) {
+    throw new AppError('You have already submitted work for this campaign', 400);
   }
 
   const session = await mongoose.startSession();

@@ -1,20 +1,86 @@
 import React, { useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { ArrowLeft, CheckCircle2, UploadCloud, Link as LinkIcon, Info } from "lucide-react"
+import { ArrowLeft, CheckCircle2, UploadCloud, Link as LinkIcon, Info, Loader2 } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Card, CardContent } from "../../components/ui/Card"
 import { Button } from "../../components/ui/Button"
 import { Input, Label } from "../../components/ui/Input"
 import { Badge } from "../../components/ui/Badge"
-import { mockCampaigns, mockSubmissions } from "../../data/mockData"
 import { EmptyState } from "../../components/ui/EmptyState"
+import { useApi } from "../../hooks/useApi"
+import api from "../../lib/api"
 
 export function SubmissionPage() {
   const { id } = useParams()
-  const campaign = mockCampaigns.find(c => c.id === id) || mockCampaigns.find(c => c.hasJoined)
-  const existingSubmission = mockSubmissions.find(s => s.campaignId === campaign?.id)
+  
+  const { data: campaignData, loading: campaignLoading } = useApi(`/public/campaigns/${id}`)
+  const { data: submissionsData, loading: subsLoading, refetch } = useApi(`/creator/campaigns/${id}/submissions`)
+
+  const campaign = campaignData?.campaign
+  const existingSubmission = submissionsData?.submissions?.[0]
 
   const [url, setUrl] = useState("")
+  const [file, setFile] = useState(null)
+  const [fileUrl, setFileUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
+
+  const handleFileUpload = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    setUploading(true);
+    setSubmitError(null);
+
+    const formData = new FormData();
+    formData.append('submission', selectedFile);
+
+    try {
+      const response = await api.post('/upload/submission', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      setFileUrl(response.data.data.url);
+      setFile(selectedFile);
+    } catch (err) {
+      setSubmitError(err.response?.data?.message || "File upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!url && !fileUrl) {
+      setSubmitError("Please provide a post URL or upload a file.");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await api.post(`/creator/campaigns/${id}/submissions`, {
+        submissionType: fileUrl ? (url ? 'both' : 'file') : 'url',
+        contentUrl: url || undefined,
+        fileUrl: fileUrl || undefined
+      });
+      await refetch();
+    } catch (err) {
+      setSubmitError(err.response?.data?.message || err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (campaignLoading || subsLoading) {
+    return (
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   if (!campaign) {
     return <EmptyState title="Campaign not found" />
@@ -62,8 +128,8 @@ export function SubmissionPage() {
                     <Label className="uppercase text-[10px] tracking-widest text-zinc-500">Live Post URL</Label>
                     <div className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50/50 p-4 dark:border-zinc-800/50 dark:bg-zinc-900/50 group transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800/50">
                       <LinkIcon className="h-5 w-5 text-zinc-400 group-hover:text-brand-500 transition-colors" />
-                      <a href={existingSubmission.url} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:text-brand-500 transition-colors truncate">
-                        {existingSubmission.url}
+                      <a href={existingSubmission.contentUrl} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:text-brand-500 transition-colors truncate">
+                        {existingSubmission.contentUrl}
                       </a>
                     </div>
                   </div>
@@ -76,7 +142,12 @@ export function SubmissionPage() {
                   )}
                 </div>
               ) : (
-                <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
+                <form className="space-y-8" onSubmit={handleSubmit}>
+                  {submitError && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-400">
+                      {submitError}
+                    </div>
+                  )}
                   <div className="space-y-4">
                     <Label htmlFor="postUrl" className="uppercase text-[10px] tracking-widest text-zinc-500">Live Post URL</Label>
                     <div className="relative group">
@@ -87,6 +158,7 @@ export function SubmissionPage() {
                         className="pl-12 h-14 rounded-2xl"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
+                        required
                       />
                     </div>
                     <p className="text-xs font-medium text-zinc-500 dark:text-zinc-500 flex items-center gap-2">
@@ -97,19 +169,41 @@ export function SubmissionPage() {
 
                   <div className="rounded-[2rem] border border-dashed border-zinc-200 bg-zinc-50/50 p-10 text-center dark:border-zinc-800/50 dark:bg-zinc-900/50 group transition-all hover:bg-zinc-100 dark:hover:bg-zinc-900 shadow-inner">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-white dark:bg-zinc-800 shadow-soft group-hover:scale-110 transition-transform">
-                      <UploadCloud className="h-8 w-8 text-brand-600 dark:text-brand-400" />
+                      {uploading ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+                      ) : fileUrl ? (
+                        <CheckCircle2 className="h-8 w-8 text-green-500" />
+                      ) : (
+                        <UploadCloud className="h-8 w-8 text-brand-600 dark:text-brand-400" />
+                      )}
                     </div>
-                    <h4 className="mt-6 font-display text-lg font-bold text-zinc-950 dark:text-zinc-50">Optional: Raw File Upload</h4>
+                    <h4 className="mt-6 font-display text-lg font-bold text-zinc-950 dark:text-zinc-50">
+                      {file ? `File: ${file.name}` : "Optional: Raw File Upload"}
+                    </h4>
                     <p className="mt-2 text-sm font-medium text-zinc-500 dark:text-zinc-500">
-                      Some brands require the raw video file. Max 500MB.
+                      {fileUrl ? "File uploaded successfully!" : "Some brands require the raw video file. Max 50MB."}
                     </p>
-                    <Button variant="outline" size="lg" className="mt-6 rounded-2xl px-8 shadow-sm">
-                      Select File
+                    <input
+                      type="file"
+                      id="rawFile"
+                      className="hidden"
+                      onChange={handleFileUpload}
+                      accept="image/*,video/*"
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="lg" 
+                      className="mt-6 rounded-2xl px-8 shadow-sm"
+                      onClick={() => document.getElementById('rawFile').click()}
+                      disabled={uploading}
+                    >
+                      {fileUrl ? "Change File" : "Select File"}
                     </Button>
                   </div>
 
-                  <Button type="submit" className="w-full h-14 rounded-2xl text-lg font-bold shadow-soft shadow-brand-600/20 active:scale-95 transition-all">
-                    Submit to Brand
+                  <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl text-lg font-bold shadow-soft shadow-brand-600/20 active:scale-95 transition-all">
+                    {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Submit to Brand"}
                   </Button>
                 </form>
               )}
@@ -135,7 +229,7 @@ export function SubmissionPage() {
               <div className="space-y-4 border-t border-zinc-100 pt-6 dark:border-zinc-800/50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest text-[10px]">Reward</span>
-                  <span className="font-display text-2xl font-black text-zinc-950 dark:text-zinc-50">{campaign.rewardAmt}</span>
+                  <span className="font-display text-2xl font-black text-zinc-950 dark:text-zinc-50">${campaign.rewardAmount?.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest text-[10px]">Platform</span>

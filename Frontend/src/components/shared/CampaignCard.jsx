@@ -8,15 +8,15 @@ import { cn } from "../../utils"
 
 export function CampaignCard({ campaign, role = "public", className }) {
   // role could be 'public', 'creator' (shows 'joined' badge), or 'brand'
-  const isJoined = role === "creator" && campaign.hasJoined
+  const isJoined = role === "creator" && (campaign.hasJoined || campaign.joinStatus === 'joined');
 
   return (
     <Card hoverable className={cn("flex h-full flex-col overflow-hidden", className)}>
       {/* Cover Image Placeholder */}
       <div className="relative aspect-video w-full overflow-hidden bg-zinc-200 dark:bg-zinc-800">
         <img 
-          src={campaign.coverImage || `https://ui-avatars.com/api/?name=${campaign.title}&background=random&size=400`} 
-          alt={campaign.title}
+          src={campaign.coverImage || campaign.bannerUrl || `https://ui-avatars.com/api/?name=${campaign.title || 'C'}&background=random&size=400`} 
+          alt={campaign.title || "Campaign"}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
         {isJoined && (
@@ -35,11 +35,11 @@ export function CampaignCard({ campaign, role = "public", className }) {
         <div>
           <div className="mb-3 flex items-center justify-between gap-2">
             <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-brand-600 dark:text-brand-400">
-              {campaign.brandName}
+              {campaign.brandName || campaign.brand?.companyName || "Brand"}
             </span>
             <div className="flex items-center gap-1.5 text-sm font-bold text-zinc-900 dark:text-zinc-100">
               <DollarSign className="h-4 w-4 text-green-600 dark:text-green-500" />
-              <span>{campaign.rewardAmt}</span>
+              <span>{campaign.rewardAmount ? campaign.rewardAmount.toLocaleString() : campaign.rewardAmt}</span>
             </div>
           </div>
           <h3 className="line-clamp-2 font-display text-lg font-bold leading-snug text-zinc-950 dark:text-zinc-50">
@@ -53,11 +53,11 @@ export function CampaignCard({ campaign, role = "public", className }) {
         <div className="mt-8 flex flex-wrap items-center gap-4 text-xs font-medium text-zinc-500 dark:text-zinc-400">
           <div className="flex items-center gap-1.5">
             <Users className="h-4 w-4 opacity-70" />
-            <span>{campaign.participantsCount || 0} participants</span>
+            <span>{campaign.stats?.joins || campaign.participantsCount || 0} participants</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Calendar className="h-4 w-4 opacity-70" />
-            <span>Due {campaign.deadline}</span>
+            <span>Due {campaign.endAt ? new Date(campaign.endAt).toLocaleDateString() : campaign.deadline}</span>
           </div>
         </div>
       </CardContent>
@@ -66,10 +66,10 @@ export function CampaignCard({ campaign, role = "public", className }) {
         <Link 
           to={
             role === "brand" 
-              ? `/brand/campaigns/${campaign.id}` 
+              ? `/brand/campaigns/${campaign._id || campaign.id}` 
               : role === "creator"
-                ? `/creator/campaigns/${campaign.id}`
-                : `/campaigns/${campaign.id}`
+                ? `/creator/campaigns/${campaign._id || campaign.id}`
+                : `/campaigns/${campaign.slug || campaign._id || campaign.id}`
           } 
           className="w-full"
         >

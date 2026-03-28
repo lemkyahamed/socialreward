@@ -18,11 +18,48 @@ const getDashboardStats = async () => {
     .limit(10)
     .populate('actorUserId', 'email role');
 
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+  sixMonthsAgo.setDate(1);
+  sixMonthsAgo.setHours(0, 0, 0, 0);
+
+  let baseUsers = await User.countDocuments({ createdAt: { $lt: sixMonthsAgo } });
+
+  const userAggregation = await User.aggregate([
+    { $match: { createdAt: { $gte: sixMonthsAgo } } },
+    {
+      $group: {
+        _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } },
+        users: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const userGrowth = [];
+  
+  for (let i = 0; i < 6; i++) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    
+    const found = userAggregation.find(a => a._id.month === m && a._id.year === y);
+    const newUsers = found ? found.users : 0;
+    baseUsers += newUsers;
+    
+    userGrowth.push({
+      month: monthNames[m - 1],
+      users: baseUsers
+    });
+  }
+
   return {
     totalUsers,
-    totalLiveCampaigns: totalCampaigns,
-    openSuspiciousCount: openSuspicious,
-    failedJobsCount: failedJobs,
+    liveCampaigns: totalCampaigns,
+    suspiciousItems: openSuspicious,
+    failedJobs,
+    userGrowth,
     recentActivity
   };
 };
@@ -45,10 +82,13 @@ const getUsers = async (queryFilters) => {
   const total = await User.countDocuments(filter);
 
   return {
-    users,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalUsers: total
+    items: users,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
 };
 
@@ -99,10 +139,13 @@ const getCampaigns = async (queryFilters) => {
   const total = await Campaign.countDocuments(filter);
 
   return {
-    campaigns,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalCampaigns: total
+    items: campaigns,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
 };
 
@@ -148,10 +191,13 @@ const getSuspiciousFlags = async (queryFilters) => {
   const total = await SuspiciousFlag.countDocuments(filter);
 
   return {
-    flags,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalFlags: total
+    items: flags,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
 };
 
@@ -190,11 +236,29 @@ const getJobLogs = async (queryFilters) => {
   const total = await JobLog.countDocuments(filter);
 
   return {
-    jobs,
-    totalPages: Math.ceil(total / limit),
-    currentPage: parseInt(page, 10),
-    totalJobs: total
+    items: jobs,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
   };
+};
+
+const deleteCampaign = async (adminId, campaignId) => {
+  const campaign = await Campaign.findByIdAndDelete(campaignId);
+  if (!campaign) throw new AppError('Campaign not found', 404);
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'Campaign',
+    entityId: campaignId,
+    action: 'ADMIN_DELETE_CAMPAIGN',
+    metadata: { title: campaign.title }
+  });
+
+  return true;
 };
 
 module.exports = {
@@ -205,5 +269,6 @@ module.exports = {
   updateCampaignStatus,
   getSuspiciousFlags,
   updateSuspiciousFlagStatus,
-  getJobLogs
+  getJobLogs,
+  deleteCampaign
 };

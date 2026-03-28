@@ -1,21 +1,29 @@
 import React, { useState } from "react"
 import { Link } from "react-router-dom"
-import { Search, Filter } from "lucide-react"
+import { Search, Filter, Loader2 } from "lucide-react"
 import { EmptyState } from "../../components/ui/EmptyState"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Input } from "../../components/ui/Input"
 import { Button } from "../../components/ui/Button"
 import { CampaignCard } from "../../components/shared/CampaignCard"
 import { Pagination } from "../../components/ui/Pagination"
-import { mockCampaigns } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
 
 export function JoinedCampaigns() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  
+  const { data, loading } = useApi('/creator/joined')
+  const rawJoins = data?.items || []
+  
+  const joinedCampaigns = rawJoins.map(join => ({
+    ...join.campaignId,
+    joinStatus: join.status
+  }))
 
-  const filteredCampaigns = mockCampaigns.filter(c => 
-    c.hasJoined && 
-    (c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.brandName.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredCampaigns = joinedCampaigns.filter(c => 
+    (statusFilter === "all" || statusFilter === c.joinStatus) &&
+    (searchTerm === "" || (c.title && c.title.toLowerCase().includes(searchTerm.toLowerCase())))
   )
 
   return (
@@ -37,11 +45,15 @@ export function JoinedCampaigns() {
           />
         </div>
         <div className="flex shrink-0 gap-2">
-          <select className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 cursor-pointer">
+          <select 
+            className="h-12 rounded-xl border border-zinc-200 bg-white px-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 cursor-pointer"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="all">All Statuses</option>
-            <option value="pending">Submission Pending</option>
-            <option value="review">In Review</option>
-            <option value="approved">Approved</option>
+            <option value="joined">Joined</option>
+            <option value="submitted">Submitted</option>
+            <option value="completed">Completed</option>
           </select>
           <Button variant="outline" size="icon" className="h-12 w-12 rounded-xl border-zinc-200 dark:border-zinc-800">
             <Filter className="h-4 w-4" />
@@ -49,10 +61,14 @@ export function JoinedCampaigns() {
         </div>
       </div>
 
-      {filteredCampaigns.length > 0 ? (
+      {loading ? (
+        <div className="py-24 flex justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+        </div>
+      ) : filteredCampaigns.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.id} campaign={campaign} role="creator" />
+            <CampaignCard key={campaign._id} campaign={campaign} role="creator" />
           ))}
         </div>
       ) : (
@@ -69,7 +85,7 @@ export function JoinedCampaigns() {
         </div>
       )}
 
-      {filteredCampaigns.length > 0 && (
+      {!loading && filteredCampaigns.length > 0 && (
         <div className="mt-8">
           <Pagination currentPage={1} totalPages={1} onPageChange={() => {}} />
         </div>

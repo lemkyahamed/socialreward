@@ -1,14 +1,24 @@
 import React from "react"
-import { Activity, Clock, FileText } from "lucide-react"
+import { Activity, Clock, FileText, Loader2 } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Card, CardContent } from "../../components/ui/Card"
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { mockSystemLogs } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
 
 export function SystemJobLogs() {
-  const sortedLogs = [...mockSystemLogs].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  const { data, loading, refetch } = useApi('/admin/jobs')
+  
+  const sortedLogs = data?.items || []
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-12">
@@ -17,7 +27,7 @@ export function SystemJobLogs() {
         description="Low-level audit trail for scheduled background tasks and automated system events."
         action={
           <div className="flex gap-3">
-            <Button variant="outline" size="lg" className="h-12 rounded-2xl font-bold border-zinc-200 dark:border-zinc-800 shadow-soft"><Activity className="mr-2 h-4 w-4" /> Refresh Base</Button>
+            <Button onClick={() => refetch()} variant="outline" size="lg" className="h-12 rounded-2xl font-bold border-zinc-200 dark:border-zinc-800 shadow-soft"><Activity className="mr-2 h-4 w-4" /> Refresh Base</Button>
             <Button variant="outline" size="lg" className="h-12 rounded-2xl font-bold border-zinc-200 dark:border-zinc-800 shadow-soft"><FileText className="mr-2 h-4 w-4" /> Export Audit</Button>
           </div>
         }
@@ -37,11 +47,11 @@ export function SystemJobLogs() {
             </TableHeader>
             <TableBody>
               {sortedLogs.map(log => (
-                <TableRow key={log.id} className={`${log.status === "Failed" ? "bg-red-50/20 dark:bg-red-950/20" : ""} border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors`}>
+                <TableRow key={log._id} className={`${log.status === "failed" ? "bg-red-50/20 dark:bg-red-950/20" : ""} border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors`}>
                   <TableCell className="px-8 py-5 text-zinc-500 font-mono text-[10px] font-bold whitespace-nowrap tracking-tighter">
                     <div className="flex items-center gap-2">
                       <Clock className="h-3 w-3 text-zinc-400" />
-                      {new Date(log.timestamp).toLocaleTimeString()} · {new Date(log.timestamp).toLocaleDateString()}
+                      {new Date(log.createdAt).toLocaleTimeString()} · {new Date(log.createdAt).toLocaleDateString()}
                     </div>
                   </TableCell>
                   <TableCell className="py-5 font-bold text-zinc-950 dark:text-zinc-50">
@@ -49,18 +59,18 @@ export function SystemJobLogs() {
                   </TableCell>
                   <TableCell className="py-5">
                     <Badge variant="outline" className="font-mono text-[9px] font-black tracking-[0.1em] border-zinc-200 dark:border-zinc-800 text-zinc-500 uppercase">
-                      {log.type}
+                      {log.jobType}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-5 text-zinc-600 dark:text-zinc-400 text-sm font-medium">
-                    {log.result}
+                    {typeof log.result === 'object' ? JSON.stringify(log.result) : log.result || 'N/A'}
                   </TableCell>
                   <TableCell className="px-8 py-5">
                     <Badge 
-                      variant={log.status === "Success" ? "primary" : "outline"}
-                      className="rounded-lg font-black text-[10px]"
+                      variant={log.status === "success" ? "primary" : "outline"}
+                      className="rounded-lg font-black text-[10px] uppercase"
                     >
-                      {log.status === "Success" ? "COMPLETE" : "EXCEPTION"}
+                      {log.status === "success" ? "COMPLETE" : log.status === "failed" ? "EXCEPTION" : log.status}
                     </Badge>
                   </TableCell>
                 </TableRow>

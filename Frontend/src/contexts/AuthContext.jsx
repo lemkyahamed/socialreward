@@ -23,7 +23,10 @@ export const AuthProvider = ({ children }) => {
            localStorage.setItem('user', JSON.stringify(res.data.data.user));
         })
         .catch(() => {
-           logout();
+           // Token is invalid or expired
+           localStorage.removeItem('accessToken');
+           localStorage.removeItem('user');
+           setUser(null);
         })
         .finally(() => setLoading(false));
     } else {

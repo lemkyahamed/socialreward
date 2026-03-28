@@ -20,7 +20,8 @@ const register = asyncHandler(async (req, res, next) => {
         id: user._id,
         email: user.email,
         role: user.role,
-        status: user.status
+        status: user.status,
+        profile: user.profile
       },
       accessToken
     }
@@ -41,7 +42,8 @@ const login = asyncHandler(async (req, res, next) => {
         id: user._id,
         email: user.email,
         role: user.role,
-        status: user.status
+        status: user.status,
+        profile: user.profile
       },
       accessToken
     }
@@ -69,7 +71,7 @@ const refresh = asyncHandler(async (req, res, next) => {
   }
 
   // Check if user exists and is active
-  const user = await User.findById(decoded.id);
+  const user = await User.findById(decoded.id).select('+refreshTokenVersion');
   if (!user || user.status === 'suspended') {
     return next(new AppError('The user belonging to this token no longer exists or is suspended.', 401));
   }
@@ -91,9 +93,18 @@ const refresh = asyncHandler(async (req, res, next) => {
   });
 });
 
+const CreatorProfile = require('../models/CreatorProfile');
+const BrandProfile = require('../models/BrandProfile');
+
 const getMe = asyncHandler(async (req, res, next) => {
   // User is attached to req by protect middleware
-  const user = req.user;
+  const user = req.user.toObject();
+
+  if (user.role === 'creator') {
+    user.profile = await CreatorProfile.findOne({ userId: user._id });
+  } else if (user.role === 'brand') {
+    user.profile = await BrandProfile.findOne({ userId: user._id });
+  }
 
   res.status(200).json({
     status: 'success',
@@ -103,7 +114,8 @@ const getMe = asyncHandler(async (req, res, next) => {
         email: user.email,
         role: user.role,
         status: user.status,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        profile: user.profile
       }
     }
   });

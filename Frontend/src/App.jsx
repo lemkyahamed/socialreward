@@ -24,6 +24,7 @@ import { EarningsPage } from "./pages/creator/EarningsPage"
 // Brand Pages
 import { BrandDashboard } from "./pages/brand/BrandDashboard"
 import { CreateCampaign } from "./pages/brand/CreateCampaign"
+import { MyCampaigns } from "./pages/brand/MyCampaigns"
 import { ManageCampaign } from "./pages/brand/ManageCampaign"
 import { SubmissionReview } from "./pages/brand/SubmissionReview"
 import { PayoutSummary } from "./pages/brand/PayoutSummary"
@@ -129,7 +130,7 @@ const AppRoutes = () => {
         </ProtectedRoute>
       }>
         <Route path="/brand" element={<BrandDashboard />} />
-        <Route path="/brand/campaigns" element={<ManageCampaigns />} /> {/* Reusing the list view for brevity */}
+        <Route path="/brand/campaigns" element={<MyCampaigns />} />
         <Route path="/brand/campaigns/create" element={<CreateCampaign />} />
         <Route path="/brand/campaigns/:id" element={<ManageCampaign />} />
         <Route path="/brand/submissions" element={<SubmissionReview />} /> {/* Default review queue */}

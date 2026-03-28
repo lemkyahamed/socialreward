@@ -1,6 +1,6 @@
 import React from "react"
 import { Link } from "react-router-dom"
-import { Target, DollarSign, CheckCircle2, PlayCircle, Plus } from "lucide-react"
+import { Target, DollarSign, CheckCircle2, PlayCircle, Plus, Loader2 } from "lucide-react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { StatWidget } from "../../components/ui/StatWidget"
@@ -8,11 +8,21 @@ import { Card, CardHeader, CardTitle, CardContent } from "../../components/ui/Ca
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/Table"
 import { Badge } from "../../components/ui/Badge"
 import { Button } from "../../components/ui/Button"
-import { mockBrandStats, mockSubmissions } from "../../data/mockData"
+import { useApi } from "../../hooks/useApi"
 
 export function BrandDashboard() {
-  const pendingSubmissions = mockSubmissions.filter(s => s.status === "pending")
-  const chartData = mockBrandStats.spendHistory
+  const { data: stats, loading } = useApi('/brand/dashboard')
+
+  const pendingSubmissions = stats?.recentSubmissions?.filter(s => s.reviewStatus === "pending") || []
+  const chartData = stats?.spendHistory || []
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -32,28 +42,24 @@ export function BrandDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatWidget 
           title="Total Spend" 
-          value={mockBrandStats.totalSpend} 
+          value={`$${(stats?.totalSpend || 0).toLocaleString()}`} 
           icon={DollarSign} 
-          trend="neutral" 
-          trendValue="On budget"
         />
         <StatWidget 
           title="Active Campaigns" 
-          value={mockBrandStats.activeCampaigns} 
+          value={stats?.activeCampaigns || 0} 
           icon={Target} 
         />
         <StatWidget 
           title="Pending Reviews" 
-          value={mockBrandStats.submissionsPending} 
+          value={stats?.submissionsPending || 0} 
           icon={PlayCircle} 
           className="ring-2 ring-brand-500/20"
         />
         <StatWidget 
           title="Avg. Approval Rate" 
-          value={mockBrandStats.avgApprovalRate} 
+          value={stats?.avgApprovalRate || "0%"} 
           icon={CheckCircle2} 
-          trend="up"
-          trendValue="+2% this week"
         />
       </div>
 
@@ -88,16 +94,16 @@ export function BrandDashboard() {
           </CardHeader>
           <CardContent className="space-y-4 pt-6">
             {pendingSubmissions.map(sub => (
-              <div key={sub.id} className="group relative flex flex-col gap-3 rounded-xl border border-zinc-100 p-4 transition-all hover:bg-zinc-50 dark:border-zinc-800/50 dark:hover:bg-zinc-900/50 hover:shadow-sm">
+              <div key={sub._id} className="group relative flex flex-col gap-3 rounded-xl border border-zinc-100 p-4 transition-all hover:bg-zinc-50 dark:border-zinc-800/50 dark:hover:bg-zinc-900/50 hover:shadow-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-500">{sub.campaignTitle}</span>
-                  <Badge variant="warning" className="px-2 py-0.5">Pending</Badge>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-500">{sub.campaignId?.title}</span>
+                  <Badge variant="warning" className="px-2 py-0.5 capitalize">{sub.reviewStatus}</Badge>
                 </div>
                 <div className="flex items-center gap-3">
-                  <img src={sub.creatorAvatar} alt="" className="h-8 w-8 rounded-full shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800" />
-                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{sub.creatorName}</span>
+                  <img src={sub.creatorId?.avatar || `https://ui-avatars.com/api/?name=${sub.creatorId?.email}`} alt="" className="h-8 w-8 rounded-full shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800" />
+                  <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{sub.creatorId?.email}</span>
                 </div>
-                <Link to={`/brand/submissions/${sub.id}`} className="absolute inset-0">
+                <Link to={`/brand/submissions/${sub._id}`} className="absolute inset-0">
                   <span className="sr-only">Review Submission</span>
                 </Link>
               </div>
