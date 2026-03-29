@@ -1,5 +1,10 @@
 const User = require('../models/User');
 const Campaign = require('../models/Campaign');
+const Submission = require('../models/Submission');
+const CampaignJoin = require('../models/CampaignJoin');
+const Payout = require('../models/Payout');
+const CreatorProfile = require('../models/CreatorProfile');
+const BrandProfile = require('../models/BrandProfile');
 const SuspiciousFlag = require('../models/SuspiciousFlag');
 const JobLog = require('../models/JobLog');
 const AppError = require('../utils/appError');
@@ -261,6 +266,87 @@ const deleteCampaign = async (adminId, campaignId) => {
   return true;
 };
 
+const getUserImpact = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+
+  let impact = {
+    role: user.role,
+    email: user.email,
+    stats: {}
+  };
+
+  if (user.role === 'creator') {
+    const [joins, submissions] = await Promise.all([
+      CampaignJoin.countDocuments({ creatorId: userId }),
+      Submission.countDocuments({ creatorId: userId })
+    ]);
+    impact.stats = { joins, submissions };
+  } else if (user.role === 'brand') {
+    const campaigns = await Campaign.find({ brandId: userId });
+    const campaignIds = campaigns.map(c => c._id);
+    const [submissions] = await Promise.all([
+      Submission.countDocuments({ campaignId: { $in: campaignIds } })
+    ]);
+    impact.stats = { 
+      campaigns: campaigns.length, 
+      submissions 
+    };
+  }
+
+  return impact;
+};
+
+const deleteUser = async (adminId, userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+
+  // Prevent self-deletion
+  if (user._id.toString() === adminId.toString()) {
+    throw new AppError('Cannot delete your own admin account', 400);
+  }
+
+  const role = user.role;
+  const email = user.email;
+
+  if (role === 'creator') {
+    // Cascading delete for Creator
+    await Promise.all([
+      Submission.deleteMany({ creatorId: userId }),
+      CampaignJoin.deleteMany({ creatorId: userId }),
+      Payout.deleteMany({ creatorId: userId }),
+      CreatorProfile.deleteOne({ userId }),
+      User.findByIdAndDelete(userId)
+    ]);
+  } else if (role === 'brand') {
+    // Cascading delete for Brand
+    const campaigns = await Campaign.find({ brandId: userId });
+    const campaignIds = campaigns.map(c => c._id);
+
+    await Promise.all([
+      Submission.deleteMany({ campaignId: { $in: campaignIds } }),
+      CampaignJoin.deleteMany({ campaignId: { $in: campaignIds } }),
+      Campaign.deleteMany({ brandId: userId }),
+      Payout.deleteMany({ brandId: userId }),
+      BrandProfile.deleteOne({ userId }),
+      User.findByIdAndDelete(userId)
+    ]);
+  } else {
+    // Admin or other role (just delete user record if no profile)
+    await User.findByIdAndDelete(userId);
+  }
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'User',
+    entityId: userId,
+    action: 'ADMIN_DELETE_USER',
+    metadata: { email, role }
+  });
+
+  return true;
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -270,5 +356,7 @@ module.exports = {
   getSuspiciousFlags,
   updateSuspiciousFlagStatus,
   getJobLogs,
-  deleteCampaign
+  deleteCampaign,
+  getUserImpact,
+  deleteUser
 };

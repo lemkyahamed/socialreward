@@ -1,4 +1,5 @@
 import React from "react"
+import { Link } from "react-router-dom"
 import { Users, Target, ShieldAlert, Activity, Loader2 } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { PageHeader } from "../../components/shared/PageHeader"
@@ -130,7 +131,9 @@ export function AdminDashboard() {
               </TableBody>
             </Table>
             <div className="p-4 border-t border-zinc-50 dark:border-zinc-800/50">
-              <Button variant="link" className="w-full text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-brand-600 transition-colors">View All Infrastructure Logs</Button>
+              <Link to="/admin/logs" className="block w-full">
+                <Button variant="link" className="w-full text-xs font-bold uppercase tracking-widest text-zinc-500 hover:text-brand-600 transition-colors">View All Infrastructure Logs</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

@@ -49,6 +49,16 @@ const deleteCampaign = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: null });
 });
 
+const getUserImpact = asyncHandler(async (req, res, next) => {
+  const impact = await adminService.getUserImpact(req.params.id);
+  res.status(200).json({ status: 'success', data: impact });
+});
+
+const deleteUser = asyncHandler(async (req, res, next) => {
+  await adminService.deleteUser(req.user.id, req.params.id);
+  res.status(200).json({ status: 'success', data: null });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -58,5 +68,7 @@ module.exports = {
   getSuspicious,
   updateSuspiciousStatus,
   getJobs,
-  deleteCampaign
+  deleteCampaign,
+  getUserImpact,
+  deleteUser
 };

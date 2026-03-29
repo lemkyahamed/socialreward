@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { Search, ShieldBan, MoreHorizontal, Loader2, Play } from "lucide-react"
+import { Search, ShieldBan, MoreHorizontal, Loader2, Play, Trash2 } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Input } from "../../components/ui/Input"
 import { Button } from "../../components/ui/Button"
@@ -9,6 +9,7 @@ import { Badge } from "../../components/ui/Badge"
 import { Pagination } from "../../components/ui/Pagination"
 import { useApi } from "../../hooks/useApi"
 import { usePagination } from "../../hooks/usePagination"
+import { UserDeleteModal } from "./UserDeleteModal"
 import api from "../../lib/api"
 
 export function ManageUsers() {
@@ -27,6 +28,8 @@ export function ManageUsers() {
 
   const roleFilter = filters.role || "all";
   const totalPages = pagination.totalPages || 1;
+
+  const [deleteUser, setDeleteUser] = useState(null)
 
   const handleStatusChange = async (userId, newStatus) => {
     try {
@@ -135,6 +138,15 @@ export function ManageUsers() {
                           <Play className="h-5 w-5" />
                         </Button>
                       )}
+                      <Button 
+                        onClick={() => setDeleteUser(user)} 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-10 w-10 rounded-xl text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" 
+                        title="Permanently Delete User"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -154,6 +166,15 @@ export function ManageUsers() {
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
+
+      <UserDeleteModal 
+        isOpen={!!deleteUser}
+        onClose={() => setDeleteUser(null)}
+        userId={deleteUser?._id}
+        userEmail={deleteUser?.email}
+        userRole={deleteUser?.role}
+        onDeleteSuccess={refetch}
+      />
     </div>
   )
 }

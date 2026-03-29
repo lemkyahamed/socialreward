@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Campaign = require('../models/Campaign');
 const AppError = require('../utils/appError');
 
@@ -45,8 +46,16 @@ const getPublicCampaigns = async (queryFilters) => {
   };
 };
 
-const getCampaignBySlug = async (slug) => {
-  const campaign = await Campaign.findOne({ slug, status: 'live' }).populate({
+const getCampaignBySlug = async (identifier) => {
+  const query = { status: 'live' };
+  
+  if (mongoose.Types.ObjectId.isValid(identifier)) {
+    query._id = identifier;
+  } else {
+    query.slug = identifier;
+  }
+
+  const campaign = await Campaign.findOne(query).populate({
     path: 'brandId',
     select: 'email'
   });

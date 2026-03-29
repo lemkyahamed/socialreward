@@ -17,6 +17,8 @@ router.get('/dashboard', adminController.getDashboard);
 
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', validate(updateUserStatusSchema), adminController.updateUserStatus);
+router.get('/users/:id/impact', adminController.getUserImpact);
+router.delete('/users/:id', adminController.deleteUser);
 
 router.get('/campaigns', adminController.getCampaigns);
 router.patch('/campaigns/:id/status', validate(updateCampaignStatusAdminSchema), adminController.updateCampaignStatus);

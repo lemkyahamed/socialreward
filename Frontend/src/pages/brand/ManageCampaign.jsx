@@ -28,10 +28,23 @@ export function ManageCampaign() {
   const [newBudget, setNewBudget] = React.useState(0)
   const [isUpdatingBudget, setIsUpdatingBudget] = React.useState(false)
 
-  // Initialize newBudget when campaign data loads
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
+  const [isUpdatingBrief, setIsUpdatingBrief] = React.useState(false)
+  const [editedBrief, setEditedBrief] = React.useState({
+    title: "",
+    shortDescription: "",
+    fullDescription: ""
+  })
+
+  // Initialize newBudget and editedBrief when campaign data loads
   React.useEffect(() => {
-    if (campaign?.budgetTotal) {
+    if (campaign) {
       setNewBudget(campaign.budgetTotal)
+      setEditedBrief({
+        title: campaign.title || "",
+        shortDescription: campaign.shortDescription || "",
+        fullDescription: campaign.fullDescription || ""
+      })
     }
   }, [campaign])
 
@@ -70,6 +83,21 @@ export function ManageCampaign() {
     } finally {
       setIsUpdatingBudget(false)
       setIsBudgetModalOpen(false)
+    }
+  }
+
+  const handleUpdateBrief = async () => {
+    if (!campaign) return
+    setIsUpdatingBrief(true)
+    try {
+      await api.patch(`/brand/campaigns/${campaign._id || id}`, editedBrief)
+      alert("Campaign brief updated successfully")
+      window.location.reload()
+    } catch (err) {
+      alert(err.response?.data?.message || err.message)
+    } finally {
+      setIsUpdatingBrief(false)
+      setIsEditModalOpen(false)
     }
   }
 
@@ -128,7 +156,12 @@ export function ManageCampaign() {
               Operational Actions
             </h3>
             <div className="grid gap-3">
-              <Button className="w-full h-12 rounded-xl text-sm font-bold shadow-soft">Edit Brief</Button>
+              <Button 
+                onClick={() => setIsEditModalOpen(true)}
+                className="w-full h-12 rounded-xl text-sm font-bold shadow-soft"
+              >
+                Edit Brief
+              </Button>
               <Button 
                 onClick={() => setIsBudgetModalOpen(true)}
                 variant="outline" 
@@ -304,6 +337,66 @@ export function ManageCampaign() {
               disabled={isUpdatingBudget || newBudget <= (campaign?.budgetTotal || 0)}
             >
               {isUpdatingBudget ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Confirm Increase"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        title="Edit Campaign Brief"
+        description="Update your campaign's identity and requirements to better attract and guide creators."
+        className="max-w-2xl"
+      >
+        <div className="space-y-6 py-4">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Campaign Title</label>
+            <Input 
+              value={editedBrief.title}
+              onChange={(e) => setEditedBrief({...editedBrief, title: e.target.value})}
+              placeholder="Enter new title"
+              className="h-12 rounded-xl font-bold"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Short Description (Hook)</label>
+            <Input 
+              value={editedBrief.shortDescription}
+              onChange={(e) => setEditedBrief({...editedBrief, shortDescription: e.target.value})}
+              placeholder="Brief catchy hook for the campaign"
+              className="h-12 rounded-xl font-medium"
+              maxLength={300}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Full Campaign Brief</label>
+            <textarea 
+              rows={8}
+              value={editedBrief.fullDescription}
+              onChange={(e) => setEditedBrief({...editedBrief, fullDescription: e.target.value})}
+              placeholder="Detailed instructions and context for creators..."
+              className="w-full rounded-2xl border border-zinc-200 bg-white p-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/10 focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+            <Button 
+              variant="outline" 
+              className="flex-1 h-12 rounded-xl font-bold"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={isUpdatingBrief}
+            >
+              Cancel
+            </Button>
+            <Button 
+              className="flex-1 h-12 rounded-xl font-bold shadow-soft"
+              onClick={handleUpdateBrief}
+              disabled={isUpdatingBrief}
+            >
+              {isUpdatingBrief ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Save Changes"}
             </Button>
           </div>
         </div>

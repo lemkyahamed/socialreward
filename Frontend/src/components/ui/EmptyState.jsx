@@ -1,10 +1,11 @@
-import React from "react"
+import { Target } from "lucide-react"
 import { cn } from "../../utils"
 
 export function EmptyState({
   title = "No results found",
   description = "Try adjusting your filters or creating a new item.",
   action,
+  icon: Icon = Target,
   className
 }) {
   return (
