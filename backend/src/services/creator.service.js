@@ -248,6 +248,20 @@ const getEarnings = async (creatorId) => {
   };
 };
 
+const getCampaignStatus = async (creatorId, campaignId) => {
+  const join = await CampaignJoin.findOne({ creatorId, campaignId });
+  const submission = await Submission.findOne({ creatorId, campaignId });
+  
+  return {
+    hasJoined: !!join,
+    joinId: join ? join._id : null,
+    joinStatus: join ? join.status : null,
+    hasSubmitted: !!submission,
+    submissionStatus: submission ? (submission.status || submission.reviewStatus) : null,
+    submissionId: submission ? submission._id : null
+  };
+};
+
 module.exports = {
   getDashboardStats,
   getCampaignsWithJoinStatus,
@@ -255,5 +269,6 @@ module.exports = {
   joinCampaign,
   submitWork,
   getSubmissions,
-  getEarnings
+  getEarnings,
+  getCampaignStatus
 };

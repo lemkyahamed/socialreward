@@ -37,6 +37,11 @@ const getEarnings = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { items: records, stats } });
 });
 
+const getCampaignStatus = asyncHandler(async (req, res, next) => {
+  const status = await creatorService.getCampaignStatus(req.user.id, req.params.id);
+  res.status(200).json({ status: 'success', data: status });
+});
+
 module.exports = {
   getDashboard,
   getCampaigns,
@@ -44,5 +49,6 @@ module.exports = {
   joinCampaign,
   submitWork,
   getSubmissions,
-  getEarnings
+  getEarnings,
+  getCampaignStatus
 };

@@ -18,6 +18,25 @@ export function CampaignDetail() {
   const campaign = data
 
   const [isJoining, setIsJoining] = React.useState(false)
+  const [creatorStatus, setCreatorStatus] = React.useState(null)
+  const [statusLoading, setStatusLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    if (user?.role === 'creator' && campaign) {
+      const fetchStatus = async () => {
+        setStatusLoading(true)
+        try {
+          const res = await api.get(`/creator/campaigns/${campaign._id || campaign.id}/status`)
+          setCreatorStatus(res.data.data)
+        } catch (err) {
+          console.error("Failed to fetch creator status", err)
+        } finally {
+          setStatusLoading(false)
+        }
+      }
+      fetchStatus()
+    }
+  }, [user, campaign])
 
   const handleJoin = async () => {
     if (!user) {
@@ -32,15 +51,41 @@ export function CampaignDetail() {
     setIsJoining(true)
     try {
       await api.post(`/creator/campaigns/${campaign._id || campaign.id}/join`)
-      navigate(`/creator/campaigns/${campaign._id || campaign.id}/submit`)
+      const res = await api.get(`/creator/campaigns/${campaign._id || campaign.id}/status`)
+      setCreatorStatus(res.data.data)
     } catch (err) {
       if (err.response?.data?.message?.includes("already joined")) {
-        navigate(`/creator/campaigns/${campaign._id || campaign.id}/submit`)
+        const res = await api.get(`/creator/campaigns/${campaign._id || campaign.id}/status`)
+        setCreatorStatus(res.data.data)
       } else {
         alert(err.response?.data?.message || err.message)
       }
     } finally {
       setIsJoining(false)
+    }
+  }
+
+  let ctaText = "Join Campaign"
+  let ctaDisabled = isJoining || statusLoading
+  let onCtaClick = handleJoin
+
+  const isClosed = campaign && (campaign.status !== 'live' || new Date(campaign.endAt || campaign.deadline) < new Date());
+
+  if (isClosed) {
+    ctaText = "Campaign Closed"
+    ctaDisabled = true
+    onCtaClick = undefined
+  } else if (user && user.role !== 'creator') {
+    ctaText = "Only Creators Can Join"
+    ctaDisabled = true
+    onCtaClick = undefined
+  } else if (user && user.role === 'creator' && creatorStatus) {
+    if (creatorStatus.hasSubmitted) {
+      ctaText = "View Submission"
+      onCtaClick = () => navigate(`/creator/campaigns/${campaign._id || campaign.id}/submit`)
+    } else if (creatorStatus.hasJoined) {
+      ctaText = "Submit Work"
+      onCtaClick = () => navigate(`/creator/campaigns/${campaign._id || campaign.id}/submit`)
     }
   }
 
@@ -117,8 +162,8 @@ export function CampaignDetail() {
               </div>
             </div>
             <CardContent className="p-8">
-              <Button onClick={handleJoin} disabled={isJoining} size="lg" className="w-full h-14 rounded-2xl text-lg font-bold shadow-soft shadow-brand-600/20 active:scale-95 transition-all">
-                {isJoining ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : "Join Campaign"}
+              <Button onClick={onCtaClick} disabled={ctaDisabled} size="lg" className="w-full h-14 rounded-2xl text-lg font-bold shadow-soft shadow-brand-600/20 active:scale-95 transition-all">
+                {isJoining || statusLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : ctaText}
               </Button>
               
               <div className="mt-10 space-y-6">

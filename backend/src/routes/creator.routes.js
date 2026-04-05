@@ -12,6 +12,7 @@ router.use(restrictTo('creator'));
 router.get('/dashboard', creatorController.getDashboard);
 router.get('/campaigns', creatorController.getCampaigns);
 router.get('/joined', creatorController.getJoined);
+router.get('/campaigns/:id/status', creatorController.getCampaignStatus);
 router.post('/campaigns/:id/join', creatorController.joinCampaign);
 router.post('/campaigns/:id/submit', validate(submitToCampaignSchema), creatorController.submitWork);
 router.get('/submissions', creatorController.getSubmissions);
