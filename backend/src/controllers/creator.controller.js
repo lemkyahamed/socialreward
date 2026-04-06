@@ -32,9 +32,15 @@ const getSubmissions = asyncHandler(async (req, res, next) => {
 });
 
 const getEarnings = asyncHandler(async (req, res, next) => {
-  const earnings = await creatorService.getEarnings(req.user.id);
-  const { records, ...stats } = earnings;
-  res.status(200).json({ status: 'success', data: { items: records, ...stats } });
+  const { balances, transactions } = await creatorService.getEarnings(req.user.id);
+  res.status(200).json({
+    status: 'success', 
+    data: { 
+      balances, 
+      transactions,
+      items: transactions // Backward compatibility
+    } 
+  });
 });
 
 const getCampaignStatus = asyncHandler(async (req, res, next) => {

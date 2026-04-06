@@ -208,8 +208,8 @@ const getEarnings = async (creatorId) => {
   ]);
 
   return {
-    ...balances,
-    records: ledgers
+    balances,
+    transactions: ledgers
   };
 };
 
