@@ -113,8 +113,8 @@ export function SubmissionPage() {
   const reviewStatus = existingSubmission?.reviewStatus || "pending" 
   const trackingStatus = existingSubmission?.trackingStatus || "submitted"
   const metrics = existingSubmission?.metrics || { views: 0, likes: 0, comments: 0, shares: 0 }
-  const calculatedEarnings = existingSubmission?.calculatedEarnings || 0
-  const currentViews = metrics.views || 0
+  const calculatedEarnings = existingSubmission?.calculatedEarnings ?? 0
+  const currentViews = metrics.views ?? 0
   const isApproved = reviewStatus === "approved"
   const isRejected = reviewStatus === "rejected"
   
@@ -225,7 +225,7 @@ export function SubmissionPage() {
                       <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Last Synced</span>
                       <p className="mt-1 font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
                         {metrics.lastSyncedAt ? <Clock className="h-4 w-4 text-brand-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
-                        {metrics.lastSyncedAt ? new Date(metrics.lastSyncedAt).toLocaleTimeString() : 'Pending Sync'}
+                        {metrics.lastSyncedAt ? new Date(metrics.lastSyncedAt).toLocaleTimeString() : 'Not synced yet'}
                       </p>
                     </div>
                   </div>
