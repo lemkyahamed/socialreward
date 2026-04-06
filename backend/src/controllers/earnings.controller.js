@@ -36,11 +36,11 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
 
   const calculatedEarnings = calculateEarnings(submission.campaignId, newMetrics);
 
-  // Auto-transition tracking status if in validating/live
+  // Auto-transition tracking status logically
   let newTrackingStatus = submission.trackingStatus;
   if (submission.trackingStatus === 'submitted') newTrackingStatus = 'validating';
-  if (submission.trackingStatus === 'validating') newTrackingStatus = 'live';
-  if (submission.trackingStatus === 'live') newTrackingStatus = 'tracking';
+  else if (submission.trackingStatus === 'validating') newTrackingStatus = 'live';
+  else if (submission.trackingStatus === 'live') newTrackingStatus = 'tracking';
 
   submission.metrics = newMetrics;
   submission.calculatedEarnings = calculatedEarnings;

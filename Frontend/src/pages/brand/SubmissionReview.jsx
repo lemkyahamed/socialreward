@@ -146,9 +146,15 @@ export function SubmissionReview() {
                 
                 <div className="border-t border-brand-200/50 dark:border-brand-500/20 pt-6 space-y-4">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Current Status</span>
+                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Review Status</span>
                     <Badge variant="primary" className="rounded-lg font-black uppercase tracking-tight">
                       {submission.reviewStatus}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm border-t border-brand-200/30 pt-4 mt-4">
+                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Tracking Status</span>
+                    <Badge variant="outline" className="rounded-lg font-black uppercase tracking-tight border-brand-200 text-brand-700">
+                      {submission.trackingStatus || 'validating'}
                     </Badge>
                   </div>
                   <div className="flex justify-between items-center text-sm">
@@ -175,6 +181,11 @@ export function SubmissionReview() {
               <h3 className="mb-6 uppercase text-[10px] font-black tracking-[0.2em] text-zinc-500">
                 Initial Performance
               </h3>
+              {submission.metrics?.lastSyncedAt && (
+                <p className="mb-4 text-[10px] font-bold text-brand-600 bg-brand-50 py-1 px-3 rounded-full inline-block">
+                  Verified as of {new Date(submission.metrics.lastSyncedAt).toLocaleString()}
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-2xl bg-zinc-50 p-5 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
                   <span className="font-display text-2xl font-black text-zinc-950 dark:text-zinc-50">{submission.metrics?.views?.toLocaleString() || 0}</span>

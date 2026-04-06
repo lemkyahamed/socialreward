@@ -53,7 +53,7 @@ const submissionSchema = new mongoose.Schema(
     },
     trackingStatus: {
       type: String,
-      enum: ['submitted', 'validating', 'live', 'tracking', 'approved', 'rejected', 'payout_ready'],
+      enum: ['submitted', 'validating', 'live', 'tracking', 'payout_ready', 'completed', 'rejected'],
       default: 'submitted'
     },
     payoutEligible: {

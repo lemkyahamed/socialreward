@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { 
   ArrowLeft, CheckCircle2, UploadCloud, Link as LinkIcon, 
-  Info, Loader2, Activity, Eye, DollarSign, Clock, RefreshCw, XCircle, AlertCircle
+  Info, Loader2, Activity, Eye, DollarSign, Clock, RefreshCw, XCircle, AlertCircle, MessageSquare
 } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Card, CardContent } from "../../components/ui/Card"
@@ -77,9 +77,17 @@ export function SubmissionPage() {
     }
   }
 
-  const handleSyncTracking = () => {
+  const handleSyncTracking = async () => {
+    if (!existingSubmission?._id) return;
     setIsSyncing(true)
-    setTimeout(() => setIsSyncing(false), 1500)
+    try {
+      await api.post(`/creator/submissions/${existingSubmission._id}/sync`);
+      await refetch();
+    } catch (err) {
+      console.error("Sync error:", err);
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   if (campaignLoading || subsLoading) {
@@ -101,8 +109,10 @@ export function SubmissionPage() {
 
   // Safety fallbacks for Tracking View
   const reviewStatus = existingSubmission?.reviewStatus || "needs review" 
-  const currentViews = existingSubmission?.stats?.views || (reviewStatus === 'approved' ? 4250 : 0)
-  const isApproved = reviewStatus === "approved" || reviewStatus === "payout ready"
+  const trackingStatus = existingSubmission?.trackingStatus || "submitted"
+  const metrics = existingSubmission?.metrics || { views: 0, likes: 0, comments: 0, shares: 0 }
+  const currentViews = metrics.views || 0
+  const isApproved = reviewStatus === "approved" || trackingStatus === "payout_ready" || trackingStatus === "completed"
   const isRejected = reviewStatus === "rejected"
   
   const rewardLabelMap = {
@@ -113,10 +123,12 @@ export function SubmissionPage() {
   }
   const rewardType = campaign.rewardType || "fixed"
   
-  // Calculate Earnings dynamically if CPM or fixed
-  const estimatedEarnings = rewardType === 'per_1000_views' 
-    ? (currentViews / 1000) * (campaign.rewardAmount || 0)
-    : (campaign.rewardAmount || 0);
+  // Use backend calculated earnings or dynamic fallback if just submitted
+  const estimatedEarnings = existingSubmission?.calculatedEarnings !== undefined 
+    ? existingSubmission.calculatedEarnings 
+    : (rewardType === 'per_1000_views' 
+        ? (currentViews / 1000) * (campaign.rewardAmount || 0)
+        : (campaign.rewardAmount || 0));
 
   return (
     <div className="mx-auto max-w-6xl space-y-12">
@@ -157,10 +169,13 @@ export function SubmissionPage() {
                   </div>
                   <div>
                     <h3 className="font-display text-2xl font-black capitalize tracking-tight text-zinc-900 dark:text-zinc-100">
-                      {reviewStatus}
+                      {trackingStatus || reviewStatus}
                     </h3>
                     <p className="text-sm font-bold text-zinc-500 mt-1 uppercase tracking-widest text-[10px]">
-                      {isApproved ? 'Earning Active' : isRejected ? 'Pitch Declined' : 'Validating tracking link...'}
+                      {trackingStatus === 'live' ? 'Content is Live' : 
+                       trackingStatus === 'tracking' ? 'Tracking Performance' : 
+                       isApproved ? 'Earning Active' : 
+                       isRejected ? 'Pitch Declined' : 'Processing Content...'}
                     </p>
                   </div>
                 </div>
@@ -173,15 +188,25 @@ export function SubmissionPage() {
               </div>
 
               {/* Live Tracking Metrics */}
-              {isApproved && (
-                <div className="grid gap-4 sm:grid-cols-2">
+              {(isApproved || trackingStatus === 'tracking' || trackingStatus === 'live') && (
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatWidget 
-                    title="Verified Views" 
+                    title="Views" 
                     value={currentViews.toLocaleString()} 
                     icon={Eye} 
                   />
                   <StatWidget 
-                    title="Estimated Earnings" 
+                    title="Likes" 
+                    value={metrics.likes?.toLocaleString() || '0'} 
+                    icon={Activity} 
+                  />
+                  <StatWidget 
+                    title="Engagements" 
+                    value={( (metrics.comments || 0) + (metrics.shares || 0) ).toLocaleString()} 
+                    icon={MessageSquare} 
+                  />
+                  <StatWidget 
+                    title="Earnings" 
                     value={`$${estimatedEarnings.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
                     icon={DollarSign} 
                   />
@@ -203,8 +228,8 @@ export function SubmissionPage() {
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Last Synced</span>
                       <p className="mt-1 font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                        {isApproved ? <Clock className="h-4 w-4 text-brand-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
-                        {isApproved ? 'Just now' : 'Pending Verification'}
+                        {metrics.lastSyncedAt ? <Clock className="h-4 w-4 text-brand-500" /> : <AlertCircle className="h-4 w-4 text-amber-500" />}
+                        {metrics.lastSyncedAt ? new Date(metrics.lastSyncedAt).toLocaleTimeString() : 'Pending Sync'}
                       </p>
                     </div>
                   </div>
