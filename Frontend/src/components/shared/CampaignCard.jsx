@@ -9,15 +9,15 @@ import { cn } from "../../utils"
 export function CampaignCard({ campaign, role = "public", className }) {
   // role could be 'public', 'creator' (shows 'joined' badge), or 'brand'
   const isJoined = role === "creator" && (campaign.hasJoined || campaign.joinStatus === 'joined');
-  const rewardModel = campaign.rewardModel || "fixed";
+  const rewardType = campaign.rewardType || "fixed";
   const category = campaign.niche || campaign.category || "General";
   const trustRequirement = campaign.trustRequirement || 0;
 
   const rewardLabelMap = {
     'fixed': 'Fixed Return',
-    'per post': 'Per Post',
-    'per 1000 views': 'Per CPM (1k views)',
-    'per engagement': 'Per Engagement'
+    'per_post': 'Per Post',
+    'per_1000_views': 'Per CPM (1k views)',
+    'per_engagement': 'Per Engagement'
   }
 
   return (
@@ -83,7 +83,7 @@ export function CampaignCard({ campaign, role = "public", className }) {
           <div className="grid grid-cols-2 gap-3 text-xs font-bold">
             <div className="flex items-center gap-2 rounded-lg bg-zinc-50 p-2 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
               <TrendingUp className="h-4 w-4 text-brand-500" />
-              <span className="truncate">{rewardLabelMap[rewardModel.toLowerCase()] || rewardModel}</span>
+              <span className="truncate">{rewardLabelMap[rewardType] || rewardType.replace(/_/g, ' ')}</span>
             </div>
             <div className="flex items-center gap-2 rounded-lg bg-zinc-50 p-2 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
               <Tag className="h-4 w-4 text-orange-500" />

@@ -105,6 +105,15 @@ export function CampaignDetail() {
     )
   }
 
+  const rewardLabelMap = {
+    'fixed': 'Fixed Return',
+    'per_post': 'Per Post',
+    'per_1000_views': 'Per CPM (1k views)',
+    'per_engagement': 'Per Engagement'
+  }
+  const rewardType = campaign.rewardType || "fixed"
+  const rewardLabel = rewardLabelMap[rewardType] || rewardType.replace(/_/g, ' ')
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
       {/* Banner */}
@@ -158,7 +167,10 @@ export function CampaignDetail() {
             <div className="bg-zinc-50/50 dark:bg-zinc-900/50 px-8 py-6 border-b border-zinc-100 dark:border-zinc-800/50">
               <div className="flex items-baseline gap-2">
                 <span className="font-display text-5xl font-black tracking-tighter text-zinc-950 dark:text-zinc-50">{campaign.rewardAmount ? `$${campaign.rewardAmount.toLocaleString()}` : campaign.rewardAmt}</span>
-                <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-500">Reward</span>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-500">Reward</span>
+                  <Badge variant="outline" className="mt-1 text-[9px] uppercase font-bold tracking-tighter w-fit">{rewardLabel}</Badge>
+                </div>
               </div>
             </div>
             <CardContent className="p-8">

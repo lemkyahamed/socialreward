@@ -24,7 +24,7 @@ export function AvailableCampaigns() {
     filters: { 
       platform: "all",
       category: "all",
-      rewardModel: "all",
+      rewardType: "all",
       payoutRange: "all",
       status: "live"
     } 
@@ -102,14 +102,14 @@ export function AvailableCampaigns() {
 
           <select 
             className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-bold focus:outline-none focus:border-brand-500 dark:border-zinc-800 dark:bg-zinc-950 cursor-pointer text-zinc-600 dark:text-zinc-400"
-            value={filters.rewardModel || "all"}
-            onChange={(e) => setFilter("rewardModel", e.target.value)}
+            value={filters.rewardType || "all"}
+            onChange={(e) => setFilter("rewardType", e.target.value)}
           >
             <option value="all">Any Reward Model</option>
             <option value="fixed">Fixed Return</option>
-            <option value="per post">Per Post</option>
-            <option value="per 1000 views">Per 1k Views (CPM)</option>
-            <option value="per engagement">Per Engagement</option>
+            <option value="per_post">Per Post</option>
+            <option value="per_1000_views">Per 1k Views (CPM)</option>
+            <option value="per_engagement">Per Engagement</option>
           </select>
 
           <select 
@@ -131,8 +131,7 @@ export function AvailableCampaigns() {
               size="sm" 
               className="h-10 rounded-lg text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:border-rose-900/50 dark:hover:bg-rose-500/10"
               onClick={() => {
-                setSearchTerm("");
-                updateFilters({ platform: 'all', category: 'all', rewardModel: 'all', payoutRange: 'all', status: 'live' });
+                updateFilters({ platform: 'all', category: 'all', rewardType: 'all', payoutRange: 'all', status: 'live' });
               }}
             >
               Clear Filters
@@ -163,7 +162,7 @@ export function AvailableCampaigns() {
                 <Button 
                   onClick={() => {
                     setSearchTerm("");
-                    updateFilters({ platform: 'all', category: 'all', rewardModel: 'all', payoutRange: 'all', status: 'live' });
+                    updateFilters({ platform: 'all', category: 'all', rewardType: 'all', payoutRange: 'all', status: 'live' });
                   }} 
                   variant="primary"
                   className="mt-2 h-12 shadow-soft font-bold rounded-xl"

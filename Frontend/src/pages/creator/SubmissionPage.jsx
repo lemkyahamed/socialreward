@@ -105,8 +105,16 @@ export function SubmissionPage() {
   const isApproved = reviewStatus === "approved" || reviewStatus === "payout ready"
   const isRejected = reviewStatus === "rejected"
   
+  const rewardLabelMap = {
+    'fixed': 'Fixed Return',
+    'per_post': 'Per Post',
+    'per_1000_views': 'Per CPM (1k views)',
+    'per_engagement': 'Per Engagement'
+  }
+  const rewardType = campaign.rewardType || "fixed"
+  
   // Calculate Earnings dynamically if CPM or fixed
-  const estimatedEarnings = campaign.rewardModel === 'per 1000 views' 
+  const estimatedEarnings = rewardType === 'per_1000_views' 
     ? (currentViews / 1000) * (campaign.rewardAmount || 0)
     : (campaign.rewardAmount || 0);
 
@@ -332,7 +340,7 @@ export function SubmissionPage() {
                   <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
                     <Activity className="h-3 w-3" /> Reward Model
                   </span>
-                  <Badge variant="outline" className="rounded px-2 tracking-widest text-[10px] uppercase font-bold">{campaign.rewardModel || 'Fixed'}</Badge>
+                  <Badge variant="outline" className="rounded px-2 tracking-widest text-[10px] uppercase font-bold">{rewardLabelMap[rewardType] || rewardType.replace(/_/g, ' ')}</Badge>
                 </div>
               </div>
             </CardContent>

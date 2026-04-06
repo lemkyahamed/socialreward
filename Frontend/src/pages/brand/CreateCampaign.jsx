@@ -243,6 +243,7 @@ export function CreateCampaign() {
                      <option value="fixed">Fixed Rate (Per Approved Submission)</option>
                      <option value="per_post">Per Live Post</option>
                      <option value="per_1000_views">Performance (Per 1000 Views)</option>
+                     <option value="per_engagement">Performance (Per Engagement)</option>
                    </select>
                    <p className="text-xs text-zinc-500 mt-1">Defines how creators will be compensated.</p>
                  </div>

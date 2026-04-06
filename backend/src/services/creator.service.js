@@ -72,11 +72,12 @@ const getDashboardStats = async (creatorId) => {
 };
 
 const getCampaignsWithJoinStatus = async (creatorId, queryFilters) => {
-  const { search, platform, page = 1, limit = 10 } = queryFilters;
+  const { search, platform, rewardType, page = 1, limit = 10 } = queryFilters;
   
   const filter = { status: 'live' };
   if (search) filter.title = { $regex: search, $options: 'i' };
   if (platform) filter.platform = platform;
+  if (rewardType) filter.rewardType = rewardType;
 
   const skip = (page - 1) * limit;
 

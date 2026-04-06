@@ -37,7 +37,7 @@ const campaignSchema = new mongoose.Schema(
     },
     rewardType: {
       type: String,
-      enum: ['fixed', 'per_post', 'per_1000_views', 'per_engagement', 'per_submission'],
+      enum: ['fixed', 'per_post', 'per_1000_views', 'per_engagement'],
       default: 'fixed'
     },
     rewardAmount: {

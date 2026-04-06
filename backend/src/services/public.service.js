@@ -3,7 +3,7 @@ const Campaign = require('../models/Campaign');
 const AppError = require('../utils/appError');
 
 const getPublicCampaigns = async (queryFilters) => {
-  const { search, platform, category, sort = 'newest', page = 1, limit = 10 } = queryFilters;
+  const { search, platform, category, rewardType, sort = 'newest', page = 1, limit = 10 } = queryFilters;
 
   // Base query: only live campaigns
   const filter = { status: 'live' };
@@ -17,6 +17,7 @@ const getPublicCampaigns = async (queryFilters) => {
 
   if (platform) filter.platform = platform;
   if (category) filter.category = category;
+  if (rewardType) filter.rewardType = rewardType;
 
   let sortOption = { createdAt: -1 };
   if (sort === 'reward') {
