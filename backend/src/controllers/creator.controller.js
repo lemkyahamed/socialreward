@@ -42,6 +42,11 @@ const getCampaignStatus = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: status });
 });
 
+const completeOnboarding = asyncHandler(async (req, res, next) => {
+  const profile = await creatorService.completeOnboarding(req.user.id, req.body);
+  res.status(200).json({ status: 'success', data: { profile } });
+});
+
 module.exports = {
   getDashboard,
   getCampaigns,
@@ -50,5 +55,6 @@ module.exports = {
   submitWork,
   getSubmissions,
   getEarnings,
-  getCampaignStatus
+  getCampaignStatus,
+  completeOnboarding
 };

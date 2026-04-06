@@ -37,7 +37,7 @@ const campaignSchema = new mongoose.Schema(
     },
     rewardType: {
       type: String,
-      enum: ['fixed', 'per_submission'],
+      enum: ['fixed', 'per_post', 'per_1000_views', 'per_engagement', 'per_submission'],
       default: 'fixed'
     },
     rewardAmount: {
@@ -50,6 +50,14 @@ const campaignSchema = new mongoose.Schema(
       required: true,
       min: 0
     },
+    spentBudget: {
+      type: Number,
+      default: 0
+    },
+    remainingBudget: {
+      type: Number,
+      default: 0
+    },
     maxCreators: {
       type: Number,
       required: true,
@@ -58,6 +66,16 @@ const campaignSchema = new mongoose.Schema(
     requirements: {
       type: [String],
       default: []
+    },
+    eligibility: {
+      type: [String],
+      default: []
+    },
+    trustRequirement: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
     },
     instructions: {
       type: String,

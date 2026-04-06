@@ -1,5 +1,18 @@
 const { z } = require('zod');
 
+const onboardingSchema = z.object({
+  body: z.object({
+    companyName: z.string().min(2, 'Company name is required'),
+    brandName: z.string().optional(),
+    website: z.string().url('Must be a valid URL').optional(),
+    industry: z.string().optional(),
+    contactName: z.string().min(2, 'Contact name is required'),
+    contactEmail: z.string().email('Must be a valid email'),
+    logoUrl: z.string().optional(),
+    description: z.string().optional()
+  })
+});
+
 const createCampaignSchema = z.object({
   body: z.object({
     title: z.string().min(5, 'Title must be at least 5 characters'),
@@ -7,11 +20,13 @@ const createCampaignSchema = z.object({
     fullDescription: z.string().min(20),
     platform: z.enum(['tiktok', 'instagram', 'youtube', 'twitter', 'other']),
     category: z.string().min(2),
-    rewardType: z.enum(['fixed', 'per_submission']).optional(),
+    rewardType: z.enum(['fixed', 'per_post', 'per_1000_views', 'per_engagement', 'per_submission']).optional(),
     rewardAmount: z.number().positive(),
     budgetTotal: z.number().positive(),
     maxCreators: z.number().int().positive(),
     requirements: z.array(z.string()).optional(),
+    eligibility: z.array(z.string()).optional(),
+    trustRequirement: z.number().min(0).max(100).optional(),
     instructions: z.string().min(10),
     bannerUrl: z.string().url().optional(),
     thumbnailUrl: z.string().url().optional(),
@@ -30,11 +45,13 @@ const updateCampaignSchema = z.object({
     fullDescription: z.string().min(20).optional(),
     platform: z.enum(['tiktok', 'instagram', 'youtube', 'twitter', 'other']).optional(),
     category: z.string().min(2).optional(),
-    rewardType: z.enum(['fixed', 'per_submission']).optional(),
+    rewardType: z.enum(['fixed', 'per_post', 'per_1000_views', 'per_engagement', 'per_submission']).optional(),
     rewardAmount: z.number().positive().optional(),
     budgetTotal: z.number().positive().optional(),
     maxCreators: z.number().int().positive().optional(),
     requirements: z.array(z.string()).optional(),
+    eligibility: z.array(z.string()).optional(),
+    trustRequirement: z.number().min(0).max(100).optional(),
     instructions: z.string().min(10).optional(),
     bannerUrl: z.string().url().optional(),
     thumbnailUrl: z.string().url().optional(),
@@ -59,6 +76,7 @@ const reviewSubmissionSchema = z.object({
 });
 
 module.exports = {
+  onboardingSchema,
   createCampaignSchema,
   updateCampaignSchema,
   updateCampaignStatusSchema,

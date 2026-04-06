@@ -1,24 +1,31 @@
 const Campaign = require('../models/Campaign');
 const Submission = require('../models/Submission');
-const Payout = require('../models/Payout');
+const EarningsLedger = require('../models/EarningsLedger');
 const AuditLog = require('../models/AuditLog');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const { calculateEarnings } = require('../utils/earnings');
 
 const getDashboardStats = async (brandId) => {
-  const activeCampaigns = await Campaign.countDocuments({ brandId, status: 'live' });
-  
   const campaigns = await Campaign.find({ brandId });
   const campaignIds = campaigns.map(c => c._id);
 
+  const totalCampaigns = campaigns.length;
+  const activeCampaigns = campaigns.filter(c => c.status === 'live').length;
+  const draftCampaigns = campaigns.filter(c => c.status === 'draft').length;
+
+  const totalBudget = campaigns.reduce((acc, c) => acc + (c.budgetTotal || 0), 0);
+  const remainingBudget = campaigns.reduce((acc, c) => acc + (c.remainingBudget || c.budgetTotal || 0), 0);
+
   const totalSubmissions = await Submission.countDocuments({ campaignId: { $in: campaignIds } });
   const approvedSubmissions = await Submission.countDocuments({ campaignId: { $in: campaignIds }, reviewStatus: 'approved' });
+  const rejectedSubmissions = await Submission.countDocuments({ campaignId: { $in: campaignIds }, reviewStatus: 'rejected' });
   const submissionsPending = await Submission.countDocuments({ campaignId: { $in: campaignIds }, reviewStatus: 'pending' });
   
   const approvalRate = totalSubmissions > 0 ? (approvedSubmissions / totalSubmissions) * 100 : 0;
 
-  const payouts = await Payout.find({ brandId, status: { $in: ['approved', 'paid'] } });
+  const payouts = await EarningsLedger.find({ campaignId: { $in: campaignIds }, status: { $in: ['cleared', 'withdrawn'] } });
   const totalSpend = payouts.reduce((acc, curr) => acc + curr.amount, 0);
 
   const sixMonthsAgo = new Date();
@@ -26,11 +33,11 @@ const getDashboardStats = async (brandId) => {
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const spendAggregation = await Payout.aggregate([
+  const spendAggregation = await EarningsLedger.aggregate([
     {
       $match: {
-        brandId: new mongoose.Types.ObjectId(brandId),
-        status: { $in: ['approved', 'paid'] },
+        campaignId: { $in: campaignIds },
+        status: { $in: ['cleared', 'withdrawn'] },
         createdAt: { $gte: sixMonthsAgo }
       }
     },
@@ -65,13 +72,44 @@ const getDashboardStats = async (brandId) => {
     .populate('campaignId', 'title');
 
   return {
+    totalCampaigns,
     activeCampaigns,
+    draftCampaigns,
+    totalBudget,
+    remainingBudget,
+    totalSubmissions,
+    approvedSubmissions,
+    rejectedSubmissions,
     submissionsPending,
     avgApprovalRate: `${Math.round(approvalRate * 10) / 10}%`,
     totalSpend,
     spendHistory,
     recentSubmissions
   };
+};
+
+const onboardBrand = async (brandId, data) => {
+  const BrandProfile = require('../models/BrandProfile');
+  
+  let profile = await BrandProfile.findOne({ userId: brandId });
+  if (!profile) {
+    profile = new BrandProfile({ userId: brandId });
+  }
+
+  // Update fields
+  profile.companyName = data.companyName || profile.companyName;
+  profile.brandName = data.brandName || profile.brandName;
+  profile.website = data.website || profile.website;
+  profile.industry = data.industry || profile.industry;
+  profile.contactName = data.contactName || profile.contactName;
+  profile.contactEmail = data.contactEmail || profile.contactEmail;
+  profile.logoUrl = data.logoUrl || profile.logoUrl;
+  profile.description = data.description || profile.description;
+  
+  profile.isOnboarded = true;
+
+  await profile.save();
+  return profile;
 };
 
 const createCampaign = async (brandId, campaignData) => {
@@ -82,6 +120,8 @@ const createCampaign = async (brandId, campaignData) => {
   const campaign = await Campaign.create({
     brandId,
     ...campaignData,
+    remainingBudget: campaignData.budgetTotal,
+    spentBudget: 0,
     slug,
     status: 'draft' // default
   });
@@ -205,6 +245,37 @@ const getSubmissions = async (brandId, campaignId, queryFilters) => {
   };
 };
 
+const getAllSubmissions = async (brandId, queryFilters) => {
+  // First get all campaigns for this brand
+  const campaigns = await Campaign.find({ brandId }, '_id');
+  const campaignIds = campaigns.map(c => c._id);
+
+  const { status, page = 1, limit = 20 } = queryFilters;
+  const filter = { campaignId: { $in: campaignIds } };
+  if (status && status !== 'all') filter.reviewStatus = status;
+
+  const skip = (page - 1) * limit;
+
+  const submissions = await Submission.find(filter)
+    .populate('campaignId', 'title slug rewardAmount platform')
+    .populate('creatorId', 'email firstName lastName avatar')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit * 1);
+
+  const total = await Submission.countDocuments(filter);
+
+  return {
+    items: submissions,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
+  };
+};
+
 const getSubmissionById = async (brandId, submissionId) => {
   const submission = await Submission.findById(submissionId)
     .populate('campaignId')
@@ -254,18 +325,29 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
         $inc: { 'stats.rejections': 1 }
       }, { session });
     } else {
-      // Create Payout
-      await Payout.create([{
-        submissionId: submission._id,
+      const rawEarning = calculateEarnings(submission.campaignId, submission.metrics);
+      const earningAmount = Number(rawEarning.toFixed(2));
+      
+      if (submission.campaignId.remainingBudget < earningAmount) {
+         throw new AppError(`Not enough budget. Required: $${earningAmount}, Remaining: $${submission.campaignId.remainingBudget}`, 400);
+      }
+
+      await EarningsLedger.create([{
         creatorId: submission.creatorId,
-        brandId,
+        submissionId: submission._id,
         campaignId: submission.campaignId._id,
-        amount: submission.campaignId.rewardAmount,
-        status: 'pending'
+        amount: earningAmount,
+        transactionType: 'credit',
+        status: 'cleared', // Cleared directly to available balance for MVP
+        description: `Yield from campaign: ${submission.campaignId.title}`
       }], { session });
 
       await Campaign.findByIdAndUpdate(submission.campaignId._id, {
-        $inc: { 'stats.approvals': 1 }
+        $inc: { 
+          'stats.approvals': 1,
+          spentBudget: earningAmount,
+          remainingBudget: -earningAmount
+        }
       }, { session });
     }
 
@@ -292,20 +374,23 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
 const getPayouts = async (brandId, queryFilters = {}) => {
   const { status, campaignId, page = 1, limit = 20 } = queryFilters;
   
-  const filter = { brandId };
+  const campaigns = await Campaign.find({ brandId }, '_id');
+  const campaignIds = campaigns.map(c => c._id);
+
+  const filter = { campaignId: { $in: campaignIds }, transactionType: 'credit' };
   if (status) filter.status = status;
   if (campaignId) filter.campaignId = campaignId;
 
   const skip = (page - 1) * limit;
 
-  const payouts = await Payout.find(filter)
+  const payouts = await EarningsLedger.find(filter)
     .populate('campaignId', 'title slug')
     .populate('creatorId', 'email firstName lastName avatar')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit * 1);
 
-  const total = await Payout.countDocuments(filter);
+  const total = await EarningsLedger.countDocuments(filter);
 
   return {
     items: payouts,
@@ -319,18 +404,23 @@ const getPayouts = async (brandId, queryFilters = {}) => {
 };
 
 const markPayoutPaid = async (brandId, payoutId, paymentReference) => {
-  const payout = await Payout.findOne({ _id: payoutId, brandId });
+  const payout = await EarningsLedger.findOne({ _id: payoutId });
   if (!payout) {
-    throw new AppError('Payout not found', 404);
+    throw new AppError('Ledger not found', 404);
   }
 
-  if (payout.status === 'paid') {
-    throw new AppError('Payout is already paid', 400);
+  // Verify ownership
+  const campaign = await Campaign.findById(payout.campaignId);
+  if (!campaign || campaign.brandId.toString() !== brandId.toString()) {
+    throw new AppError('Not authorized', 403);
   }
 
-  payout.status = 'paid';
-  payout.paidAt = new Date();
-  payout.paymentReference = paymentReference || 'Manual Payment';
+  if (payout.status === 'withdrawn') {
+    throw new AppError('Ledger is already paid out', 400);
+  }
+
+  payout.status = 'withdrawn';
+  payout.description = `${payout.description} (Paid out: ${paymentReference || 'Manual'})`;
   await payout.save();
 
   await AuditLog.create({
@@ -346,12 +436,14 @@ const markPayoutPaid = async (brandId, payoutId, paymentReference) => {
 
 module.exports = {
   getDashboardStats,
+  onboardBrand,
   createCampaign,
   getCampaigns,
   getCampaignById,
   updateCampaign,
   updateCampaignStatus,
   getSubmissions,
+  getAllSubmissions,
   getSubmissionById,
   reviewSubmission,
   getPayouts,

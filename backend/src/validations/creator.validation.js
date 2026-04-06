@@ -16,6 +16,24 @@ const submitToCampaignSchema = z.object({
   })
 });
 
+const onboardingSchema = z.object({
+  body: z.object({
+    fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+    displayName: z.string().min(2, 'Display name must be at least 2 characters'),
+    country: z.string().min(2, 'Country code required'),
+    niche: z.string().min(2, 'Niche is required'),
+    followerRange: z.string().min(2, 'Follower range is required'),
+    primaryPlatform: z.string().min(2, 'Primary platform is required'),
+    tiktok: z.string().optional().nullable(),
+    instagram: z.string().optional().nullable(),
+    youtube: z.string().optional().nullable(),
+    payoutMethod: z.string().optional().nullable(),
+    accountName: z.string().optional().nullable(),
+    isPayoutConnected: z.boolean().optional()
+  })
+});
+
 module.exports = {
-  submitToCampaignSchema
+  submitToCampaignSchema,
+  onboardingSchema
 };

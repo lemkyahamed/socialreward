@@ -7,6 +7,11 @@ const getDashboard = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: stats });
 });
 
+const onboardBrand = asyncHandler(async (req, res, next) => {
+  const profile = await brandService.onboardBrand(req.user.id, req.body);
+  res.status(200).json({ status: 'success', data: { profile } });
+});
+
 const createCampaign = asyncHandler(async (req, res, next) => {
   const campaign = await brandService.createCampaign(req.user.id, req.body);
   res.status(201).json({ status: 'success', data: { campaign } });
@@ -35,6 +40,11 @@ const updateCampaignStatus = asyncHandler(async (req, res, next) => {
 
 const getSubmissions = asyncHandler(async (req, res, next) => {
   const result = await brandService.getSubmissions(req.user.id, req.params.id, req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const getAllSubmissions = asyncHandler(async (req, res, next) => {
+  const result = await brandService.getAllSubmissions(req.user.id, req.query);
   res.status(200).json({ status: 'success', data: result });
 });
 
@@ -70,12 +80,14 @@ const markPayoutPaid = asyncHandler(async (req, res, next) => {
 
 module.exports = {
   getDashboard,
+  onboardBrand,
   createCampaign,
   getCampaigns,
   getCampaign,
   updateCampaign,
   updateCampaignStatus,
   getSubmissions,
+  getAllSubmissions,
   getSubmission,
   approveSubmission,
   rejectSubmission,

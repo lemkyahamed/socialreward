@@ -5,6 +5,7 @@ import { PageHeader } from "../../components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../../components/ui/Card"
 import { Button } from "../../components/ui/Button"
 import { Badge } from "../../components/ui/Badge"
+import { Label } from "../../components/ui/Input"
 import { EmptyState } from "../../components/ui/EmptyState"
 import { useApi } from "../../hooks/useApi"
 import api from "../../lib/api"
@@ -54,11 +55,9 @@ export function SubmissionReview() {
   return (
     <div className="mx-auto max-w-5xl space-y-12">
       <div className="flex items-center gap-6">
-        <Link to={`/brand/campaigns/${submission.campaignId?._id}`}>
-          <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm transition-transform active:scale-95">
-            ←
-          </Button>
-        </Link>
+        <Button onClick={() => navigate(-1)} variant="outline" size="icon" className="h-12 w-12 rounded-2xl border-zinc-200 dark:border-zinc-800 shadow-sm transition-transform active:scale-95">
+          ←
+        </Button>
         <PageHeader 
           title="Review Content"
           description={`Validating submission from ${submission.creatorId?.firstName} for ${submission.campaignId?.title}`}

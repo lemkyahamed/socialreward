@@ -29,4 +29,14 @@ router.patch('/suspicious/:id', validate(updateSuspiciousFlagSchema), adminContr
 
 router.get('/jobs', adminController.getJobs);
 
+// --- New Endpoints ---
+router.get('/submissions', adminController.getSubmissions);
+router.patch('/submissions/:id/review', adminController.updateSubmissionReview);
+router.patch('/submissions/:id/metrics', adminController.updateSubmissionMetrics);
+
+router.get('/withdrawals', adminController.getWithdrawals);
+router.patch('/withdrawals/:id/status', adminController.updateWithdrawalStatus);
+
+router.patch('/users/:id/trustscore', adminController.overrideUserTrustScore);
+
 module.exports = router;

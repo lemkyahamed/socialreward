@@ -116,8 +116,8 @@ export function MyCampaigns() {
                     </TableCell>
                     <TableCell className="py-6 px-4 text-right">
                       <div className="flex flex-col items-end">
-                        <span className="font-display text-base font-black text-zinc-950 dark:text-zinc-50">${(c.rewardAmount * (c.stats?.joins || 0)).toLocaleString()}</span>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">of ${(c.rewardAmount * c.maxCreators).toLocaleString()}</span>
+                        <span className="font-display text-base font-black text-zinc-950 dark:text-zinc-50">${(c.spentBudget || 0).toLocaleString()}</span>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">of ${(c.budgetTotal || 0).toLocaleString()}</span>
                       </div>
                     </TableCell>
                     <TableCell className="py-6">

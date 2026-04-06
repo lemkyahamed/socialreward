@@ -58,7 +58,7 @@ const getDashboardStats = async (creatorId) => {
   const recentSubmissions = await Submission.find({ creatorId })
     .sort({ createdAt: -1 })
     .limit(5)
-    .populate('campaignId', 'title slug');
+    .populate('campaignId', 'title slug rewardAmount');
 
   return {
     activeCampaigns: activeCampaignsCount,
@@ -262,6 +262,56 @@ const getCampaignStatus = async (creatorId, campaignId) => {
   };
 };
 
+const completeOnboarding = async (creatorId, data) => {
+  const CreatorProfile = require('../models/CreatorProfile');
+
+  const socialAccounts = [];
+  if (data.tiktok) socialAccounts.push({ platform: 'tiktok', username: data.tiktok, connected: true });
+  if (data.instagram) socialAccounts.push({ platform: 'instagram', username: data.instagram, connected: true });
+  if (data.youtube) socialAccounts.push({ platform: 'youtube', username: data.youtube, connected: true });
+
+  const payoutSettings = data.payoutMethod ? {
+    provider: data.payoutMethod,
+    status: 'active',
+    accountName: data.accountName,
+    connectedAt: new Date()
+  } : undefined;
+
+  const updatePayload = {
+    displayName: data.displayName,
+    country: data.country,
+    creatorCategory: data.niche,
+    primaryPlatform: data.primaryPlatform,
+    followerRange: data.followerRange,
+    isOnboarded: true,
+    payoutConnected: !!data.isPayoutConnected,
+    $set: {}
+  };
+
+  if (socialAccounts.length > 0) {
+    updatePayload.$set.socialAccounts = socialAccounts;
+  }
+  
+  if (payoutSettings) {
+    updatePayload.$set.payoutSettings = payoutSettings;
+  }
+
+  const profile = await CreatorProfile.findOneAndUpdate(
+    { userId: creatorId },
+    updatePayload,
+    { new: true, runValidators: true }
+  );
+
+  if (!profile) {
+    throw new AppError('Creator profile not found', 404);
+  }
+
+  // Allow the frontend to update User display name if they want, but usually it's tied to profile
+  // Optional: update the user full name if stored in User model
+  
+  return profile;
+};
+
 module.exports = {
   getDashboardStats,
   getCampaignsWithJoinStatus,
@@ -270,5 +320,6 @@ module.exports = {
   submitWork,
   getSubmissions,
   getEarnings,
-  getCampaignStatus
+  getCampaignStatus,
+  completeOnboarding
 };

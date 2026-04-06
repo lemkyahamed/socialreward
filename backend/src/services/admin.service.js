@@ -9,6 +9,10 @@ const SuspiciousFlag = require('../models/SuspiciousFlag');
 const JobLog = require('../models/JobLog');
 const AppError = require('../utils/appError');
 const AuditLog = require('../models/AuditLog');
+const WithdrawalRequest = require('../models/WithdrawalRequest');
+const EarningsLedger = require('../models/EarningsLedger');
+const { reevaluateTrustScore } = require('../utils/trustScore');
+const { calculateEarnings } = require('../utils/earnings');
 
 const getDashboardStats = async () => {
   const [totalUsers, totalCampaigns, openSuspicious, failedJobs] = await Promise.all([
@@ -347,6 +351,183 @@ const deleteUser = async (adminId, userId) => {
   return true;
 };
 
+// --- New MVP Methods for Submissions, Withdrawals, and Trust Score ---
+
+const getSubmissions = async (queryFilters) => {
+  const { status, page = 1, limit = 20 } = queryFilters;
+  const filter = {};
+  if (status) filter.trackingStatus = status;
+
+  const skip = (page - 1) * limit;
+
+  const submissions = await Submission.find(filter)
+    .populate('creatorId', 'email')
+    .populate('campaignId', 'title rewardType rewardAmount')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit * 1);
+
+  const total = await Submission.countDocuments(filter);
+
+  return {
+    items: submissions,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
+  };
+};
+
+const updateSubmissionReview = async (adminId, submissionId, status, reason) => {
+  const submission = await Submission.findById(submissionId).populate('campaignId');
+  if (!submission) throw new AppError('Submission not found', 404);
+
+  // If already approved previously, don't allow double-dipping the ledger
+  if (submission.trackingStatus === 'approved' && status === 'approved') {
+    throw new AppError('Submission is already approved.', 400);
+  }
+
+  submission.trackingStatus = status;
+  if (reason) submission.notes = reason;
+
+  // Process Trust Engine hooks
+  if (status === 'approved') {
+    submission.payoutEligible = true;
+    submission.calculatedEarnings = calculateEarnings(submission.campaignId, submission.metrics);
+    
+    // Explicit ledger credit mapping
+    const ledger = await EarningsLedger.create({
+      creatorId: submission.creatorId,
+      campaignId: submission.campaignId._id,
+      submissionId: submission._id,
+      amount: submission.calculatedEarnings,
+      transactionType: 'credit',
+      status: 'cleared', // MVP behavior makes approved instantly cleared
+      description: `Admin Manual Approval: ${submission.campaignId.title}`
+    });
+
+    await reevaluateTrustScore(submission.creatorId, 'approve');
+  } else if (status === 'rejected') {
+    submission.payoutEligible = false;
+    await reevaluateTrustScore(submission.creatorId, 'reject');
+  }
+
+  await submission.save();
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'Submission',
+    entityId: submission._id,
+    action: `ADMIN_REVIEW_SUBMISSION_${status.toUpperCase()}`,
+    metadata: { reason }
+  });
+
+  return submission;
+};
+
+const updateSubmissionMetrics = async (adminId, submissionId, metrics) => {
+  const submission = await Submission.findByIdAndUpdate(
+    submissionId,
+    { metrics: { ...metrics } },
+    { new: true }
+  );
+
+  if (!submission) throw new AppError('Submission not found', 404);
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'Submission',
+    entityId: submission._id,
+    action: `ADMIN_MANUAL_METRICS_OVERRIDE`
+  });
+
+  return submission;
+};
+
+const getWithdrawals = async (queryFilters) => {
+  const { status, page = 1, limit = 20 } = queryFilters;
+  const filter = {};
+  if (status) filter.status = status;
+
+  const skip = (page - 1) * limit;
+
+  const withdrawals = await WithdrawalRequest.find(filter)
+    .populate('creatorId', 'email')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit * 1);
+
+  const total = await WithdrawalRequest.countDocuments(filter);
+
+  return {
+    items: withdrawals,
+    pagination: {
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      limit: parseInt(limit, 10)
+    }
+  };
+};
+
+const updateWithdrawalStatus = async (adminId, withdrawalId, status) => {
+  const withdrawal = await WithdrawalRequest.findById(withdrawalId);
+  if (!withdrawal) throw new AppError('Withdrawal request not found', 404);
+
+  withdrawal.status = status;
+  if (status === 'paid') withdrawal.completedAt = new Date();
+  
+  await withdrawal.save();
+
+  // Reflect strictly on the Ledger history
+  if (status === 'paid' || status === 'rejected') {
+    await EarningsLedger.updateMany(
+      { creatorId: withdrawal.creatorId, transactionType: 'debit', status: 'pending', amount: withdrawal.amount },
+      { $set: { status: status === 'paid' ? 'cleared' : 'failed' } }
+    );
+  }
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'WithdrawalRequest',
+    entityId: withdrawal._id,
+    action: `ADMIN_WITHDRAWAL_${status.toUpperCase()}`,
+  });
+
+  return withdrawal;
+};
+
+const overrideUserTrustScore = async (adminId, userId, newScore) => {
+  const user = await User.findById(userId);
+  if (!user || user.role !== 'creator') throw new AppError('Invalid Creator ID', 404);
+
+  const profile = await CreatorProfile.findOne({ userId });
+  if (!profile) throw new AppError('Creator profile not found', 404);
+
+  // Directly mutate integer values overriding algorithmic hooks
+  const boundedScore = Math.max(0, Math.min(100, newScore));
+  profile.trustScore = boundedScore;
+  
+  if (boundedScore < 40) profile.trustLabel = 'New';
+  else if (boundedScore < 70) profile.trustLabel = 'Rising';
+  else if (boundedScore < 90) profile.trustLabel = 'Trusted';
+  else profile.trustLabel = 'Verified';
+
+  await profile.save();
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'User',
+    entityId: userId,
+    action: `ADMIN_TRUST_OVERRIDE`,
+    metadata: { oldScore: profile.trustScore, newScore: boundedScore }
+  });
+
+  return profile;
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -358,5 +539,11 @@ module.exports = {
   getJobLogs,
   deleteCampaign,
   getUserImpact,
-  deleteUser
+  deleteUser,
+  getSubmissions,
+  updateSubmissionReview,
+  updateSubmissionMetrics,
+  getWithdrawals,
+  updateWithdrawalStatus,
+  overrideUserTrustScore
 };

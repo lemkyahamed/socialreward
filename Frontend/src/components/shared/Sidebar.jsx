@@ -8,7 +8,11 @@ import { useAuth } from "../../contexts/AuthContext"
 
 export function Sidebar({ navItems }) {
   const location = useLocation()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
+  
+  const isCreator = user?.role === 'creator'
+  const isOnboarded = user?.profile?.isOnboarded
+  const isPayoutConnected = user?.profile?.payoutConnected
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800/50 dark:bg-zinc-950 md:flex">
@@ -30,20 +34,37 @@ export function Sidebar({ navItems }) {
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`)
+            
+            let showWarning = false
+            if (isCreator) {
+              if (item.label === 'Payout Settings' && !isPayoutConnected) showWarning = true
+              if (item.label === 'Profile' && !isOnboarded) showWarning = true
+            }
 
             return (
               <Link
                 key={item.label}
                 to={item.href}
                 className={cn(
-                  "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200",
+                  "group flex items-center justify-between rounded-xl px-3 py-2.5 transition-all duration-200",
                   isActive
                     ? "bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400"
-                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+                    : showWarning 
+                      ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                      : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
                 )}
               >
-                <Icon className={cn("h-5 w-5 transition-colors", isActive ? "text-brand-600 dark:text-brand-400" : "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-50")} />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className={cn("h-5 w-5 transition-colors", 
+                    isActive ? "text-brand-600 dark:text-brand-400" : 
+                    showWarning ? "text-red-500 dark:text-red-400" : 
+                    "text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-50"
+                  )} />
+                  {item.label}
+                </div>
+                {showWarning && (
+                  <div className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></div>
+                )}
               </Link>
             )
           })}

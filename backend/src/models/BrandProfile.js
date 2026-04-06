@@ -21,6 +21,26 @@ const brandProfileSchema = new mongoose.Schema(
     description: {
       type: String,
       maxlength: 1000
+    },
+    brandName: {
+      type: String
+    },
+    industry: {
+      type: String
+    },
+    contactName: {
+      type: String
+    },
+    contactEmail: {
+      type: String
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    },
+    isOnboarded: {
+      type: Boolean,
+      default: false
     }
   },
   {

@@ -33,11 +33,11 @@ export function PayoutSummary() {
     let pending = 0;
     
     allPayouts.forEach(p => {
-      if (p.status === 'paid' || p.status === 'approved') disbursed += p.amount;
-      if (p.status === 'pending') pending += p.amount;
+      if (p.status === 'withdrawn') disbursed += p.amount;
+      if (p.status === 'cleared') pending += p.amount;
     });
 
-    return { disbursed, pending, escrow: pending + disbursed }; // simplistic view
+    return { disbursed, pending, escrow: pending + disbursed };
   }, [allPayouts]);
 
   if (loading) {
@@ -105,14 +105,14 @@ export function PayoutSummary() {
                   <TableCell className="py-5 font-display text-lg font-black text-zinc-900 dark:text-zinc-50 text-right">${payout.amount?.toLocaleString()}</TableCell>
                   <TableCell className="py-5">
                     <Badge 
-                      variant={payout.status === "paid" ? "success" : payout.status === "approved" ? "primary" : "outline"}
+                      variant={payout.status === "withdrawn" ? "success" : payout.status === "cleared" ? "primary" : "outline"}
                       className="rounded-lg font-black capitalize"
                     >
                       {payout.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-8 py-5 text-right">
-                    {payout.status === 'approved' ? (
+                    {payout.status === 'cleared' ? (
                       <Button onClick={() => handleMarkPaid(payout._id)} disabled={processingId === payout._id} variant="outline" size="sm" className="font-bold border-brand-200 text-brand-600 hover:bg-brand-50">
                         {processingId === payout._id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Mark Paid"}
                       </Button>

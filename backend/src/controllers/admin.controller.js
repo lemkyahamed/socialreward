@@ -59,6 +59,41 @@ const deleteUser = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: null });
 });
 
+// --- New MVP Controllers ---
+
+const getSubmissions = asyncHandler(async (req, res, next) => {
+  const result = await adminService.getSubmissions(req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const updateSubmissionReview = asyncHandler(async (req, res, next) => {
+  const { status, reason } = req.body;
+  const submission = await adminService.updateSubmissionReview(req.user.id, req.params.id, status, reason);
+  res.status(200).json({ status: 'success', data: { submission } });
+});
+
+const updateSubmissionMetrics = asyncHandler(async (req, res, next) => {
+  const submission = await adminService.updateSubmissionMetrics(req.user.id, req.params.id, req.body.metrics);
+  res.status(200).json({ status: 'success', data: { submission } });
+});
+
+const getWithdrawals = asyncHandler(async (req, res, next) => {
+  const result = await adminService.getWithdrawals(req.query);
+  res.status(200).json({ status: 'success', data: result });
+});
+
+const updateWithdrawalStatus = asyncHandler(async (req, res, next) => {
+  const { status } = req.body;
+  const withdrawal = await adminService.updateWithdrawalStatus(req.user.id, req.params.id, status);
+  res.status(200).json({ status: 'success', data: { withdrawal } });
+});
+
+const overrideUserTrustScore = asyncHandler(async (req, res, next) => {
+  const { score } = req.body;
+  const profile = await adminService.overrideUserTrustScore(req.user.id, req.params.id, score);
+  res.status(200).json({ status: 'success', data: { profile } });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -70,5 +105,11 @@ module.exports = {
   getJobs,
   deleteCampaign,
   getUserImpact,
-  deleteUser
+  deleteUser,
+  getSubmissions,
+  updateSubmissionReview,
+  updateSubmissionMetrics,
+  getWithdrawals,
+  updateWithdrawalStatus,
+  overrideUserTrustScore
 };

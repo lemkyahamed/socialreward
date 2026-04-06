@@ -46,6 +46,30 @@ const submissionSchema = new mongoose.Schema(
     },
     reviewedAt: {
       type: Date
+    },
+    platform: {
+      type: String,
+      enum: ['tiktok', 'instagram', 'youtube', 'twitter', 'other']
+    },
+    trackingStatus: {
+      type: String,
+      enum: ['validating', 'live', 'tracking', 'payout_ready', 'completed'],
+      default: 'validating'
+    },
+    payoutEligible: {
+      type: Boolean,
+      default: false
+    },
+    calculatedEarnings: {
+      type: Number,
+      default: 0
+    },
+    metrics: {
+      views: { type: Number, default: 0 },
+      likes: { type: Number, default: 0 },
+      comments: { type: Number, default: 0 },
+      shares: { type: Number, default: 0 },
+      syncedAt: { type: Date }
     }
   },
   {

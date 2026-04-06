@@ -22,11 +22,50 @@ const creatorProfileSchema = new mongoose.Schema(
     country: {
       type: String
     },
-    socialLinks: {
-      instagram: String,
-      tiktok: String,
-      youtube: String,
-      twitter: String
+    creatorCategory: {
+      type: String
+    },
+    primaryPlatform: {
+      type: String
+    },
+    followerRange: {
+      type: String
+    },
+    trustScore: {
+      type: Number,
+      default: 50 // 'New' starts at 50/100
+    },
+    trustLabel: {
+      type: String,
+      enum: ['New', 'Rising', 'Trusted', 'Verified'],
+      default: 'New'
+    },
+    trustMetrics: {
+      approvals: { type: Number, default: 0 },
+      rejections: { type: Number, default: 0 },
+      lateSubmissions: { type: Number, default: 0 }
+    },
+    socialAccounts: [{
+      platform: String,
+      username: String,
+      profileUrl: String,
+      followerCount: { type: Number, default: 0 },
+      lastSyncedAt: Date,
+      connected: { type: Boolean, default: false }
+    }],
+    payoutSettings: {
+      provider: String,
+      status: String,
+      accountName: String,
+      connectedAt: Date
+    },
+    isOnboarded: {
+      type: Boolean,
+      default: false
+    },
+    payoutConnected: {
+      type: Boolean,
+      default: false
     }
   },
   {

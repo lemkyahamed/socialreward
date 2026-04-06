@@ -20,8 +20,8 @@ export function ManageCampaign() {
   const { data: campaignData, loading: campaignLoading } = useApi(`/brand/campaigns/${id}`)
   const { data: submissionsData, loading: subsLoading } = useApi(`/brand/campaigns/${id}/submissions`)
 
-  const campaign = campaignData?.data || campaignData?.campaign; // Depending on exact backend response
-  const campaignSubmissions = submissionsData?.data || submissionsData?.submissions || [];
+  const campaign = campaignData?.data || campaignData?.campaign || campaignData;
+  const campaignSubmissions = submissionsData?.items || submissionsData?.submissions || submissionsData?.data || [];
 
   const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false)
   const [isBudgetModalOpen, setIsBudgetModalOpen] = React.useState(false)
@@ -119,7 +119,7 @@ export function ManageCampaign() {
         <div className="grid gap-6 sm:grid-cols-2">
           <StatWidget 
             title="Budget Remaining" 
-            value={`$${(campaign.rewardAmount * (campaign.maxCreators - (campaign.stats?.joins || 0))).toLocaleString()}`} 
+            value={`$${(campaign.remainingBudget || campaign.budgetTotal || 0).toLocaleString()}`} 
             icon={DollarSign} 
           />
           <StatWidget 
