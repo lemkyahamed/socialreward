@@ -6,6 +6,7 @@ const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const { calculateEarnings } = require('../utils/earnings');
+const ledgerService = require('./ledger.service');
 
 const getDashboardStats = async (brandId) => {
   const campaigns = await Campaign.find({ brandId });
@@ -332,15 +333,14 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
          throw new AppError(`Not enough budget. Required: $${earningAmount}, Remaining: $${submission.campaignId.remainingBudget}`, 400);
       }
 
-      await EarningsLedger.create([{
+      await ledgerService.createLedgerCredit({
         creatorId: submission.creatorId,
         submissionId: submission._id,
         campaignId: submission.campaignId._id,
         amount: earningAmount,
-        transactionType: 'credit',
         status: 'cleared', // Cleared directly to available balance for MVP
         description: `Yield from campaign: ${submission.campaignId.title}`
-      }], { session });
+      }, session);
 
       await Campaign.findByIdAndUpdate(submission.campaignId._id, {
         $inc: { 

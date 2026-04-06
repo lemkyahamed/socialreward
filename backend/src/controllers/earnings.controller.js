@@ -50,12 +50,11 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
   if (submission.reviewStatus === 'approved' && calculatedEarnings > 0) {
     const existingLedger = await EarningsLedger.findOne({ submissionId });
     if (!existingLedger) {
-      await EarningsLedger.create({
+      await ledgerService.createLedgerCredit({
         creatorId,
         submissionId: submission._id,
         campaignId: submission.campaignId._id,
         amount: calculatedEarnings,
-        transactionType: 'credit',
         status: 'cleared',
         description: `Yield from campaign: ${submission.campaignId.title}`
       });
@@ -113,28 +112,29 @@ const requestWithdrawal = asyncHandler(async (req, res, next) => {
   try {
     session.startTransaction();
 
+    const ledgerEntry = await ledgerService.createLedgerDebit({
+      creatorId,
+      amount,
+      status: 'pending',
+      description: `Withdrawal request initiated via ${payoutMethod || 'stripe'}`
+    }, session);
+
     const withdrawalRequest = await Withdrawal.create([{
       creatorId,
       amount,
       payoutMethod: payoutMethod || 'stripe_connect',
       status: 'pending',
-      requestedAt: new Date()
-    }], { session });
-
-    await EarningsLedger.create([{
-      creatorId,
-      amount,
-      transactionType: 'debit',
-      status: 'pending',
-      description: `Withdrawal request initiated via ${payoutMethod || 'stripe'}`
+      requestedAt: new Date(),
+      relatedLedgerEntryId: ledgerEntry._id
     }], { session });
 
     await session.commitTransaction();
+    const updatedBalances = await ledgerService.getCreatorBalances(creatorId);
     res.status(201).json({ 
       status: 'success', 
       data: { 
         withdrawal: withdrawalRequest[0],
-        balances: await ledgerService.getCreatorBalances(creatorId)
+        balances: updatedBalances
       } 
     });
   } catch (error) {

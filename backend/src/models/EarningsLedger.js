@@ -7,22 +7,22 @@ const earningsLedgerSchema = new mongoose.Schema(
       ref: 'User',
       required: true
     },
+    campaignId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Campaign',
+      required: true
+    },
     submissionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Submission'
     },
-    campaignId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Campaign'
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 0
-    },
     transactionType: {
       type: String,
       enum: ['credit', 'debit'],
+      required: true
+    },
+    amount: {
+      type: Number,
       required: true
     },
     status: {
@@ -45,8 +45,7 @@ const earningsLedgerSchema = new mongoose.Schema(
   }
 );
 
-earningsLedgerSchema.index({ creatorId: 1, status: 1 });
-earningsLedgerSchema.index({ submissionId: 1 });
+earningsLedgerSchema.index({ creatorId: 1, createdAt: -1 });
 
 const EarningsLedger = mongoose.model('EarningsLedger', earningsLedgerSchema);
 module.exports = EarningsLedger;

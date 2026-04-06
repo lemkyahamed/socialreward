@@ -17,6 +17,21 @@ const withdrawalSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected', 'paid'],
       default: 'pending'
     },
+    requestedAt: {
+      type: Date,
+      default: Date.now
+    },
+    processedAt: {
+      type: Date
+    },
+    processedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    notes: {
+      type: String,
+      trim: true
+    },
     payoutMethod: {
        type: String,
        required: true,
@@ -28,21 +43,6 @@ const withdrawalSchema = new mongoose.Schema(
     relatedLedgerEntryId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'EarningsLedger'
-    },
-    notes: {
-      type: String,
-      trim: true
-    },
-    requestedAt: {
-      type: Date,
-      default: Date.now
-    },
-    processedAt: {
-      type: Date
-    },
-    processedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
     }
   },
   {

@@ -4,6 +4,7 @@ const Submission = require('../models/Submission');
 const EarningsLedger = require('../models/EarningsLedger');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
+const ledgerService = require('./ledger.service');
 
 const getDashboardStats = async (creatorId) => {
   const joins = await CampaignJoin.find({ creatorId, status: 'joined' });
@@ -15,8 +16,8 @@ const getDashboardStats = async (creatorId) => {
   const approvalsCount = await Submission.countDocuments({ creatorId, reviewStatus: 'approved' });
   const pendingApprovals = await Submission.countDocuments({ creatorId, reviewStatus: 'pending' });
 
-  const ledgers = await EarningsLedger.find({ creatorId, transactionType: 'credit', status: { $in: ['cleared', 'withdrawn'] } });
-  const totalEarnings = ledgers.reduce((acc, curr) => acc + curr.amount, 0);
+  const balances = await ledgerService.getCreatorBalances(creatorId);
+  const totalEarnings = balances.available + balances.withdrawn;
 
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
@@ -234,18 +235,16 @@ const getSubmissions = async (creatorId, campaignId) => {
 };
 
 const getEarnings = async (creatorId) => {
-  const ledgers = await EarningsLedger.find({ creatorId })
-    .populate('campaignId', 'title slug')
-    .sort({ createdAt: -1 });
-
-  const totalEarned = ledgers.filter(l => l.transactionType === 'credit' && ['cleared', 'withdrawn'].includes(l.status)).reduce((sum, l) => l.amount + sum, 0);
-  const pendingPayout = ledgers.filter(l => l.transactionType === 'credit' && l.status === 'pending').reduce((sum, l) => l.amount + sum, 0);
-  const totalWithdrawn = ledgers.filter(l => l.transactionType === 'debit').reduce((sum, l) => l.amount + sum, 0);
+  const [balances, ledgers] = await Promise.all([
+    ledgerService.getCreatorBalances(creatorId),
+    ledgerService.getCreatorLedger(creatorId)
+  ]);
 
   return {
-    totalEarned,
-    pendingPayout,
-    totalWithdrawn,
+    totalEarned: balances.available + balances.withdrawn,
+    pendingPayout: balances.pending,
+    totalWithdrawn: balances.withdrawn,
+    balances,
     records: ledgers
   };
 };

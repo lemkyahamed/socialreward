@@ -3,16 +3,17 @@ const mongoose = require('mongoose');
 
 /**
  * Calculates current balances for a creator based on ledger entries.
+ * Rules (per USER PART 3):
+ * - credit + cleared contributes to available
+ * - credit + pending contributes to pending
+ * - debit (any non-failed) reduces available
+ * - debit + withdrawn contributes to withdrawn
  * @param {string} creatorId 
  * @returns {Promise<Object>} { available, pending, withdrawn }
  */
 const getCreatorBalances = async (creatorId) => {
   const ledgers = await EarningsLedger.find({ creatorId });
 
-  // available: cleared credits - all debits (cleared or withdrawn)
-  // pending: pending credits
-  // withdrawn: debit entries that are cleared/withdrawn
-  
   const totalClearedCredits = ledgers
     .filter(l => l.transactionType === 'credit' && l.status === 'cleared')
     .reduce((sum, l) => sum + l.amount, 0);
@@ -48,20 +49,28 @@ const getCreatorLedger = async (creatorId) => {
 /**
  * Creates a credit entry for earnings.
  */
-const createCreditEntry = async (data, session) => {
-  return await EarningsLedger.create([data], { session });
+const createLedgerCredit = async (data, session) => {
+  const entry = await EarningsLedger.create([ {
+    ...data,
+    transactionType: 'credit'
+  } ], { session });
+  return entry[0];
 };
 
 /**
  * Creates a debit entry for withdrawals.
  */
-const createDebitEntry = async (data, session) => {
-  return await EarningsLedger.create([data], { session });
+const createLedgerDebit = async (data, session) => {
+  const entry = await EarningsLedger.create([ {
+    ...data,
+    transactionType: 'debit'
+  } ], { session });
+  return entry[0];
 };
 
 module.exports = {
   getCreatorBalances,
   getCreatorLedger,
-  createCreditEntry,
-  createDebitEntry
+  createLedgerCredit,
+  createLedgerDebit
 };

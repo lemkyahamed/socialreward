@@ -12,6 +12,7 @@ const Withdrawal = require('../models/Withdrawal');
 const EarningsLedger = require('../models/EarningsLedger');
 const { reevaluateTrustScore } = require('../utils/trustScore');
 const { calculateEarnings } = require('../utils/earnings');
+const ledgerService = require('./ledger.service');
 
 const getDashboardStats = async () => {
   const [totalUsers, totalCampaigns, openSuspicious, failedJobs] = await Promise.all([
@@ -398,12 +399,11 @@ const updateSubmissionReview = async (adminId, submissionId, status, reason) => 
     submission.calculatedEarnings = calculateEarnings(submission.campaignId, submission.metrics);
     
     // Explicit ledger credit mapping
-    const ledger = await EarningsLedger.create({
+    await ledgerService.createLedgerCredit({
       creatorId: submission.creatorId,
       campaignId: submission.campaignId._id,
       submissionId: submission._id,
       amount: submission.calculatedEarnings,
-      transactionType: 'credit',
       status: 'cleared', // MVP behavior makes approved instantly cleared
       description: `Admin Manual Approval: ${submission.campaignId.title}`
     });
@@ -487,11 +487,17 @@ const updateWithdrawalStatus = async (adminId, withdrawalId, status, notes) => {
 
   // Reflect strictly on the Ledger history
   if (status === 'paid' || status === 'rejected') {
-    // Update the pending debit ledger entry
-    await EarningsLedger.updateOne(
-      { creatorId: withdrawal.creatorId, transactionType: 'debit', status: 'pending', amount: withdrawal.amount, createdAt: { $gte: withdrawal.createdAt } },
-      { $set: { status: status === 'paid' ? 'withdrawn' : 'failed' } }
-    );
+    const ledgerStatus = status === 'paid' ? 'withdrawn' : 'failed';
+    
+    if (withdrawal.relatedLedgerEntryId) {
+      await EarningsLedger.findByIdAndUpdate(withdrawal.relatedLedgerEntryId, { status: ledgerStatus });
+    } else {
+      // Fallback for any legacy records without the direct link
+      await EarningsLedger.updateOne(
+        { creatorId: withdrawal.creatorId, transactionType: 'debit', status: 'pending', amount: withdrawal.amount, createdAt: { $gte: withdrawal.createdAt } },
+        { $set: { status: ledgerStatus } }
+      );
+    }
   }
 
   await AuditLog.create({
