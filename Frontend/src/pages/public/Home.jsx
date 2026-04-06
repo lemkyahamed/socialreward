@@ -8,7 +8,7 @@ import { Card } from "../../components/ui/Card"
 
 export function Home() {
   const { data, loading, error } = useApi('/public/campaigns');
-  const featuredCampaigns = data?.campaigns?.slice(0, 3) || [];
+  const featuredCampaigns = data?.items?.slice(0, 3) || [];
 
   return (
     <div className="flex flex-col">
