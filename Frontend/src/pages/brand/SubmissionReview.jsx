@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { Check, X, ExternalLink, AlertTriangle, MessageSquare, Loader2 } from "lucide-react"
+import { Check, X, ExternalLink, AlertTriangle, MessageSquare, Loader2, Clock } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../../components/ui/Card"
 import { Button } from "../../components/ui/Button"
@@ -151,11 +151,18 @@ export function SubmissionReview() {
                       {submission.reviewStatus}
                     </Badge>
                   </div>
-                  <div className="flex justify-between items-center text-sm border-t border-brand-200/30 pt-4 mt-4">
-                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Tracking Status</span>
+                  <div className="flex justify-between items-center text-sm border-t border-brand-200/30 pt-4 mt-2">
+                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Tracking Lifecycle</span>
                     <Badge variant="outline" className="rounded-lg font-black uppercase tracking-tight border-brand-200 text-brand-700">
                       {submission.trackingStatus || 'validating'}
                     </Badge>
+                  </div>
+                  <div className="flex justify-between items-center text-sm mt-2">
+                    <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Last Verified</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1">
+                       <Clock className="h-3 w-3 text-brand-500" />
+                       {submission.metrics?.lastSyncedAt ? new Date(submission.metrics.lastSyncedAt).toLocaleTimeString() : 'Not Yet'}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="font-bold text-zinc-500 text-xs uppercase tracking-widest">Target Reward</span>

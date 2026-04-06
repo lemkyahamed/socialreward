@@ -108,11 +108,12 @@ export function SubmissionPage() {
   }
 
   // Safety fallbacks for Tracking View
-  const reviewStatus = existingSubmission?.reviewStatus || "needs review" 
+  const reviewStatus = existingSubmission?.reviewStatus || "pending" 
   const trackingStatus = existingSubmission?.trackingStatus || "submitted"
   const metrics = existingSubmission?.metrics || { views: 0, likes: 0, comments: 0, shares: 0 }
+  const calculatedEarnings = existingSubmission?.calculatedEarnings || 0
   const currentViews = metrics.views || 0
-  const isApproved = reviewStatus === "approved" || trackingStatus === "payout_ready" || trackingStatus === "completed"
+  const isApproved = reviewStatus === "approved"
   const isRejected = reviewStatus === "rejected"
   
   const rewardLabelMap = {
@@ -123,12 +124,8 @@ export function SubmissionPage() {
   }
   const rewardType = campaign.rewardType || "fixed"
   
-  // Use backend calculated earnings or dynamic fallback if just submitted
-  const estimatedEarnings = existingSubmission?.calculatedEarnings !== undefined 
-    ? existingSubmission.calculatedEarnings 
-    : (rewardType === 'per_1000_views' 
-        ? (currentViews / 1000) * (campaign.rewardAmount || 0)
-        : (campaign.rewardAmount || 0));
+  // Use backend calculated earnings exclusively for the dashboard
+  const estimatedEarnings = calculatedEarnings;
 
   return (
     <div className="mx-auto max-w-6xl space-y-12">
@@ -169,13 +166,10 @@ export function SubmissionPage() {
                   </div>
                   <div>
                     <h3 className="font-display text-2xl font-black capitalize tracking-tight text-zinc-900 dark:text-zinc-100">
-                      {trackingStatus || reviewStatus}
+                      {isApproved ? 'Approved' : isRejected ? 'Rejected' : 'Review Required'}
                     </h3>
-                    <p className="text-sm font-bold text-zinc-500 mt-1 uppercase tracking-widest text-[10px]">
-                      {trackingStatus === 'live' ? 'Content is Live' : 
-                       trackingStatus === 'tracking' ? 'Tracking Performance' : 
-                       isApproved ? 'Earning Active' : 
-                       isRejected ? 'Pitch Declined' : 'Processing Content...'}
+                    <p className="text-sm font-bold text-zinc-500 mt-1 uppercase tracking-widest text-[10px] flex items-center gap-2">
+                       Lifecycle Phase: <Badge variant="outline" className="h-5 px-2 rounded-md tracking-widest text-[9px] border-brand-200 dark:border-brand-900/50 bg-brand-50/50 dark:bg-brand-900/20 text-brand-600">{trackingStatus}</Badge>
                     </p>
                   </div>
                 </div>
