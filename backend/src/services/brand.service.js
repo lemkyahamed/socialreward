@@ -315,6 +315,7 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
     const reviewStatus = action === 'approve' ? 'approved' : 'rejected';
     
     submission.reviewStatus = reviewStatus;
+    submission.trackingStatus = action === 'approve' ? 'payout_ready' : 'rejected';
     submission.reviewedBy = brandId;
     submission.reviewedAt = new Date();
     
@@ -326,12 +327,13 @@ const reviewSubmission = async (brandId, submissionId, action, reason) => {
         $inc: { 'stats.rejections': 1 }
       }, { session });
     } else {
-      const rawEarning = calculateEarnings(submission.campaignId, submission.metrics);
-      const earningAmount = Number(rawEarning.toFixed(2));
+      const earningAmount = calculateEarnings(submission.campaignId, submission.metrics);
       
       if (submission.campaignId.remainingBudget < earningAmount) {
          throw new AppError(`Not enough budget. Required: $${earningAmount}, Remaining: $${submission.campaignId.remainingBudget}`, 400);
       }
+
+      submission.calculatedEarnings = earningAmount;
 
       await ledgerService.createLedgerCredit({
         creatorId: submission.creatorId,

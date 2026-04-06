@@ -390,27 +390,42 @@ const updateSubmissionReview = async (adminId, submissionId, status, reason) => 
     throw new AppError('Submission is already approved.', 400);
   }
 
-  submission.trackingStatus = status;
+  const reviewStatus = status === 'approved' ? 'approved' : 'rejected';
+  submission.reviewStatus = reviewStatus;
+  submission.trackingStatus = status; // admin explicitly sets trackingStatus for now in this method
   if (reason) submission.notes = reason;
 
   // Process Trust Engine hooks
   if (status === 'approved') {
     submission.payoutEligible = true;
-    submission.calculatedEarnings = calculateEarnings(submission.campaignId, submission.metrics);
+    const earningAmount = calculateEarnings(submission.campaignId, submission.metrics);
+    submission.calculatedEarnings = earningAmount;
     
     // Explicit ledger credit mapping
     await ledgerService.createLedgerCredit({
       creatorId: submission.creatorId,
       campaignId: submission.campaignId._id,
       submissionId: submission._id,
-      amount: submission.calculatedEarnings,
+      amount: earningAmount,
       status: 'cleared', // MVP behavior makes approved instantly cleared
       description: `Admin Manual Approval: ${submission.campaignId.title}`
+    });
+
+    // Update campaign budget
+    await Campaign.findByIdAndUpdate(submission.campaignId._id, {
+      $inc: { 
+        'stats.approvals': 1,
+        spentBudget: earningAmount,
+        remainingBudget: -earningAmount
+      }
     });
 
     await reevaluateTrustScore(submission.creatorId, 'approve');
   } else if (status === 'rejected') {
     submission.payoutEligible = false;
+    await Campaign.findByIdAndUpdate(submission.campaignId._id, {
+      $inc: { 'stats.rejections': 1 }
+    });
     await reevaluateTrustScore(submission.creatorId, 'reject');
   }
 

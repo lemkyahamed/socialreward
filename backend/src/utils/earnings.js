@@ -12,23 +12,28 @@ function calculateEarnings(campaign, metrics) {
   const rate = campaign.rewardAmount;
   const { views = 0, likes = 0, comments = 0, shares = 0 } = metrics || {};
   
+  let earnings = 0;
+  
   switch (campaign.rewardType) {
     case 'fixed':
     case 'per_post':
-      return rate;
+      earnings = rate;
+      break;
       
     case 'per_1000_views':
-      // Using floating decimals natively matching requested yield mapping
-      return (Math.max(0, views) / 1000) * rate;
+      earnings = (Math.max(0, views) / 1000) * rate;
+      break;
       
     case 'per_engagement':
-      // Agnostic total engagement aggregation
       const totalEngagements = Math.max(0, likes) + Math.max(0, comments) + Math.max(0, shares);
-      return totalEngagements * rate;
+      earnings = totalEngagements * rate;
+      break;
       
     default:
-      return 0; // Invalid formula type defaults strictly to 0
+      earnings = 0;
   }
+
+  return Number(earnings.toFixed(2));
 }
 
 module.exports = {

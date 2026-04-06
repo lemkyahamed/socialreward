@@ -31,25 +31,29 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
     likes: submission.metrics?.likes > 0 ? submission.metrics.likes : mockScrape.likes,
     comments: submission.metrics?.comments > 0 ? submission.metrics.comments : mockScrape.comments,
     shares: submission.metrics?.shares > 0 ? submission.metrics.shares : mockScrape.shares,
-    syncedAt: new Date()
+    lastSyncedAt: new Date()
   };
 
-  const rawEarnings = calculateEarnings(submission.campaignId, newMetrics);
-  const calculatedEarnings = Number(rawEarnings.toFixed(2));
+  const calculatedEarnings = calculateEarnings(submission.campaignId, newMetrics);
 
-  // Auto-clear thresholds (if approved status allows payout readiness scaling)
+  // Auto-transition tracking status if in validating/live
   let newTrackingStatus = submission.trackingStatus;
+  if (submission.trackingStatus === 'submitted') newTrackingStatus = 'validating';
   if (submission.trackingStatus === 'validating') newTrackingStatus = 'live';
+  if (submission.trackingStatus === 'live') newTrackingStatus = 'tracking';
 
   submission.metrics = newMetrics;
   submission.calculatedEarnings = calculatedEarnings;
   submission.trackingStatus = newTrackingStatus;
   await submission.save();
 
-  // If approved and not logged yet in ledger, create an immutable delta
+  // If approved, ensure ledger and budget are in sync
   if (submission.reviewStatus === 'approved' && calculatedEarnings > 0) {
     const existingLedger = await EarningsLedger.findOne({ submissionId });
+    
     if (!existingLedger) {
+       // This shouldn't normally happen as approval creates the ledger entry, 
+       // but we handle it just in case.
       await ledgerService.createLedgerCredit({
         creatorId,
         submissionId: submission._id,
@@ -58,10 +62,28 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
         status: 'cleared',
         description: `Yield from campaign: ${submission.campaignId.title}`
       });
+      
+      // Update campaign budget
+      await Campaign.findByIdAndUpdate(submission.campaignId._id, {
+        $inc: { 
+          spentBudget: calculatedEarnings,
+          remainingBudget: -calculatedEarnings
+        }
+      });
     } else if (existingLedger.amount !== calculatedEarnings) {
+      const delta = calculatedEarnings - existingLedger.amount;
+      
       // Update ledger if metrics pushed higher earnings
       existingLedger.amount = calculatedEarnings;
       await existingLedger.save();
+      
+      // Sync campaign budget with the new delta
+      await Campaign.findByIdAndUpdate(submission.campaignId._id, {
+        $inc: { 
+          spentBudget: delta,
+          remainingBudget: -delta
+        }
+      });
     }
   }
 

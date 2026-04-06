@@ -15,15 +15,9 @@ import { About } from "./pages/public/About"
 import { FAQ } from "./pages/public/FAQ"
 
 // Creator Pages
-import { CreatorDashboard } from "./pages/creator/CreatorDashboard"
-import { AvailableCampaigns } from "./pages/creator/AvailableCampaigns"
-import { JoinedCampaigns } from "./pages/creator/JoinedCampaigns"
-import { SubmissionPage } from "./pages/creator/SubmissionPage"
-import { EarningsPage } from "./pages/creator/EarningsPage"
-import { WithdrawalsPage } from "./pages/creator/WithdrawalsPage"
-import { OnboardingWizard } from "./pages/creator/OnboardingWizard"
-import { PayoutSetup } from "./pages/creator/PayoutSetup"
 import { CreatorCampaignDetail } from "./pages/creator/CreatorCampaignDetail"
+import { MySubmissions } from "./pages/creator/MySubmissions"
+
 
 // Brand Pages
 import { BrandOnboardingWizard } from "./pages/brand/BrandOnboardingWizard"
@@ -114,7 +108,9 @@ const AppRoutes = () => {
         }>
           <Route path="/creator" element={<CreatorDashboard />} />
           <Route path="/creator/campaigns/joined" element={<JoinedCampaigns />} />
+          <Route path="/creator/submissions" element={<MySubmissions />} />
           <Route path="/creator/earnings" element={<EarningsPage />} />
+
           <Route path="/creator/withdrawals" element={<WithdrawalsPage />} />
           <Route path="/creator/payout-setup" element={<PayoutSetup />} />
 

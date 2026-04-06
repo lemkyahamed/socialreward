@@ -53,8 +53,8 @@ const submissionSchema = new mongoose.Schema(
     },
     trackingStatus: {
       type: String,
-      enum: ['validating', 'live', 'tracking', 'payout_ready', 'completed'],
-      default: 'validating'
+      enum: ['submitted', 'validating', 'live', 'tracking', 'approved', 'rejected', 'payout_ready'],
+      default: 'submitted'
     },
     payoutEligible: {
       type: Boolean,
@@ -69,7 +69,7 @@ const submissionSchema = new mongoose.Schema(
       likes: { type: Number, default: 0 },
       comments: { type: Number, default: 0 },
       shares: { type: Number, default: 0 },
-      syncedAt: { type: Date }
+      lastSyncedAt: { type: Date }
     }
   },
   {

@@ -142,6 +142,17 @@ export function SubmissionsInbox() {
                     </div>
                   </div>
 
+                  <div className="hidden lg:flex items-center gap-8 px-6 border-x border-zinc-100">
+                    <div className="text-center">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Views</p>
+                      <p className="font-display text-sm font-black text-zinc-950">{submission.metrics?.views?.toLocaleString() || 0}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wider">Target Yield</p>
+                      <p className="font-display text-sm font-black text-brand-600">${submission.calculatedEarnings?.toFixed(2) || "0.00"}</p>
+                    </div>
+                  </div>
+
                   <div className="flex items-center justify-between sm:w-1/3 sm:justify-end gap-6">
                     {getStatusBadge(submission.reviewStatus)}
                     
