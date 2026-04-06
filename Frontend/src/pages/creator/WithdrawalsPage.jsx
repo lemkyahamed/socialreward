@@ -264,8 +264,8 @@ export function WithdrawalsPage() {
                         <TableCell className="px-6 py-5 text-right">
                           <Badge 
                             variant={
-                              ledger.status === "cleared" ? "success" : 
-                              ledger.status === "failed" ? "danger" : 
+                              (ledger.status === "cleared" || ledger.status === "withdrawn" ) ? "success" : 
+                              ledger.status === "failed" ? "destructive" : 
                               "warning"
                             }
                             className="rounded px-2 font-black capitalize text-[10px] tracking-widest"

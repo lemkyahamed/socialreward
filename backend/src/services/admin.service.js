@@ -2,14 +2,13 @@ const User = require('../models/User');
 const Campaign = require('../models/Campaign');
 const Submission = require('../models/Submission');
 const CampaignJoin = require('../models/CampaignJoin');
-const Payout = require('../models/Payout');
 const CreatorProfile = require('../models/CreatorProfile');
 const BrandProfile = require('../models/BrandProfile');
 const SuspiciousFlag = require('../models/SuspiciousFlag');
 const JobLog = require('../models/JobLog');
 const AppError = require('../utils/appError');
 const AuditLog = require('../models/AuditLog');
-const WithdrawalRequest = require('../models/WithdrawalRequest');
+const Withdrawal = require('../models/Withdrawal');
 const EarningsLedger = require('../models/EarningsLedger');
 const { reevaluateTrustScore } = require('../utils/trustScore');
 const { calculateEarnings } = require('../utils/earnings');
@@ -318,7 +317,8 @@ const deleteUser = async (adminId, userId) => {
     await Promise.all([
       Submission.deleteMany({ creatorId: userId }),
       CampaignJoin.deleteMany({ creatorId: userId }),
-      Payout.deleteMany({ creatorId: userId }),
+      EarningsLedger.deleteMany({ creatorId: userId }),
+      Withdrawal.deleteMany({ creatorId: userId }),
       CreatorProfile.deleteOne({ userId }),
       User.findByIdAndDelete(userId)
     ]);
@@ -331,7 +331,7 @@ const deleteUser = async (adminId, userId) => {
       Submission.deleteMany({ campaignId: { $in: campaignIds } }),
       CampaignJoin.deleteMany({ campaignId: { $in: campaignIds } }),
       Campaign.deleteMany({ brandId: userId }),
-      Payout.deleteMany({ brandId: userId }),
+      EarningsLedger.deleteMany({ campaignId: { $in: campaignIds } }),
       BrandProfile.deleteOne({ userId }),
       User.findByIdAndDelete(userId)
     ]);
@@ -453,13 +453,13 @@ const getWithdrawals = async (queryFilters) => {
 
   const skip = (page - 1) * limit;
 
-  const withdrawals = await WithdrawalRequest.find(filter)
+  const withdrawals = await Withdrawal.find(filter)
     .populate('creatorId', 'email')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit * 1);
 
-  const total = await WithdrawalRequest.countDocuments(filter);
+  const total = await Withdrawal.countDocuments(filter);
 
   return {
     items: withdrawals,
@@ -472,26 +472,31 @@ const getWithdrawals = async (queryFilters) => {
   };
 };
 
-const updateWithdrawalStatus = async (adminId, withdrawalId, status) => {
-  const withdrawal = await WithdrawalRequest.findById(withdrawalId);
-  if (!withdrawal) throw new AppError('Withdrawal request not found', 404);
+const updateWithdrawalStatus = async (adminId, withdrawalId, status, notes) => {
+  const withdrawal = await Withdrawal.findById(withdrawalId);
+  if (!withdrawal) throw new AppError('Withdrawal record not found', 404);
 
   withdrawal.status = status;
-  if (status === 'paid') withdrawal.completedAt = new Date();
+  withdrawal.processedBy = adminId;
+  withdrawal.processedAt = new Date();
+  if (notes) withdrawal.notes = notes;
+  
+  if (status === 'paid') withdrawal.processedAt = new Date();
   
   await withdrawal.save();
 
   // Reflect strictly on the Ledger history
   if (status === 'paid' || status === 'rejected') {
-    await EarningsLedger.updateMany(
-      { creatorId: withdrawal.creatorId, transactionType: 'debit', status: 'pending', amount: withdrawal.amount },
-      { $set: { status: status === 'paid' ? 'cleared' : 'failed' } }
+    // Update the pending debit ledger entry
+    await EarningsLedger.updateOne(
+      { creatorId: withdrawal.creatorId, transactionType: 'debit', status: 'pending', amount: withdrawal.amount, createdAt: { $gte: withdrawal.createdAt } },
+      { $set: { status: status === 'paid' ? 'withdrawn' : 'failed' } }
     );
   }
 
   await AuditLog.create({
     actorUserId: adminId,
-    entityType: 'WithdrawalRequest',
+    entityType: 'Withdrawal',
     entityId: withdrawal._id,
     action: `ADMIN_WITHDRAWAL_${status.toUpperCase()}`,
   });

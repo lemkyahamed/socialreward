@@ -222,7 +222,7 @@ export function EarningsPage() {
                         </TableCell>
                         <TableCell className="px-8 py-5">
                           <Badge 
-                            variant={ledger.status === "cleared" ? "success" : "outline"}
+                            variant={(ledger.status === "cleared" || ledger.status === "withdrawn") ? "success" : ledger.status === "failed" ? "destructive" : "outline"}
                             className="rounded px-2 font-black capitalize text-[10px] tracking-widest"
                           >
                             {ledger.status}

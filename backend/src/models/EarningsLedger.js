@@ -27,13 +27,17 @@ const earningsLedgerSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'cleared', 'withdrawn'],
+      enum: ['pending', 'cleared', 'withdrawn', 'failed'],
       default: 'pending'
     },
     description: {
       type: String,
       required: true,
       trim: true
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     }
   },
   {

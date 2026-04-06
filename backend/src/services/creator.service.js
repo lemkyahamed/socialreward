@@ -1,7 +1,7 @@
 const Campaign = require('../models/Campaign');
 const CampaignJoin = require('../models/CampaignJoin');
 const Submission = require('../models/Submission');
-const Payout = require('../models/Payout');
+const EarningsLedger = require('../models/EarningsLedger');
 const AppError = require('../utils/appError');
 const mongoose = require('mongoose');
 
@@ -15,19 +15,20 @@ const getDashboardStats = async (creatorId) => {
   const approvalsCount = await Submission.countDocuments({ creatorId, reviewStatus: 'approved' });
   const pendingApprovals = await Submission.countDocuments({ creatorId, reviewStatus: 'pending' });
 
-  const payouts = await Payout.find({ creatorId, status: { $in: ['approved', 'paid'] } });
-  const totalEarnings = payouts.reduce((acc, curr) => acc + curr.amount, 0);
+  const ledgers = await EarningsLedger.find({ creatorId, transactionType: 'credit', status: { $in: ['cleared', 'withdrawn'] } });
+  const totalEarnings = ledgers.reduce((acc, curr) => acc + curr.amount, 0);
 
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
   sixMonthsAgo.setDate(1);
   sixMonthsAgo.setHours(0, 0, 0, 0);
 
-  const earningsAggregation = await Payout.aggregate([
+  const earningsAggregation = await EarningsLedger.aggregate([
     {
       $match: {
         creatorId: new mongoose.Types.ObjectId(creatorId),
-        status: { $in: ['approved', 'paid'] },
+        transactionType: 'credit',
+        status: { $in: ['cleared', 'withdrawn'] },
         createdAt: { $gte: sixMonthsAgo }
       }
     },
@@ -233,19 +234,19 @@ const getSubmissions = async (creatorId, campaignId) => {
 };
 
 const getEarnings = async (creatorId) => {
-  const payouts = await Payout.find({ creatorId })
+  const ledgers = await EarningsLedger.find({ creatorId })
     .populate('campaignId', 'title slug')
     .sort({ createdAt: -1 });
 
-  const totalEarned = payouts.reduce((sum, p) => p.amount + sum, 0);
-  const pendingPayout = payouts.filter(p => ['pending', 'approved'].includes(p.status)).reduce((sum, p) => p.amount + sum, 0);
-  const paidOut = payouts.filter(p => p.status === 'paid').reduce((sum, p) => p.amount + sum, 0);
+  const totalEarned = ledgers.filter(l => l.transactionType === 'credit' && ['cleared', 'withdrawn'].includes(l.status)).reduce((sum, l) => l.amount + sum, 0);
+  const pendingPayout = ledgers.filter(l => l.transactionType === 'credit' && l.status === 'pending').reduce((sum, l) => l.amount + sum, 0);
+  const totalWithdrawn = ledgers.filter(l => l.transactionType === 'debit').reduce((sum, l) => l.amount + sum, 0);
 
   return {
     totalEarned,
     pendingPayout,
-    paidOut,
-    records: payouts
+    totalWithdrawn,
+    records: ledgers
   };
 };
 

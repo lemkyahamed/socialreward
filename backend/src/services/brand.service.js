@@ -425,7 +425,7 @@ const markPayoutPaid = async (brandId, payoutId, paymentReference) => {
 
   await AuditLog.create({
     actorUserId: brandId,
-    entityType: 'Payout',
+    entityType: 'EarningsLedger',
     entityId: payout._id,
     action: 'MARK_PAYOUT_PAID',
     metadata: { paymentReference }

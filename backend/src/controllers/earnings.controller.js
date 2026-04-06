@@ -3,8 +3,9 @@ const AppError = require('../utils/appError');
 const Submission = require('../models/Submission');
 const Campaign = require('../models/Campaign');
 const EarningsLedger = require('../models/EarningsLedger');
-const WithdrawalRequest = require('../models/WithdrawalRequest');
+const Withdrawal = require('../models/Withdrawal');
 const { calculateEarnings } = require('../utils/earnings');
+const ledgerService = require('../services/ledger.service');
 const mongoose = require('mongoose');
 
 // Sync APIs dynamically to fetch live metrics and recalculate calculatedEarnings
@@ -68,32 +69,31 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { submission } });
 });
 
-// Fetch detailed financial accounting bounds
+/**
+ * GET /creator/earnings/ledger
+ * Fetch detailed financial accounting bounds and history.
+ */
 const getCreatorLedger = asyncHandler(async (req, res, next) => {
   const creatorId = req.user.id;
   
-  const ledgers = await EarningsLedger.find({ creatorId })
-    .populate('campaignId', 'title')
-    .sort({ createdAt: -1 });
-
-  const totalCleared = ledgers.filter(l => l.status === 'cleared' && l.transactionType === 'credit').reduce((a, b) => a + b.amount, 0);
-  const totalWithdrawn = ledgers.filter(l => l.status === 'withdrawn' || l.transactionType === 'debit').reduce((a, b) => a + b.amount, 0);
-  const pendingCredits = ledgers.filter(l => l.status === 'pending').reduce((a, b) => a + b.amount, 0);
+  const [balances, transactions] = await Promise.all([
+    ledgerService.getCreatorBalances(creatorId),
+    ledgerService.getCreatorLedger(creatorId)
+  ]);
 
   res.status(200).json({
     status: 'success',
     data: {
-      balances: {
-        available: totalCleared - totalWithdrawn,
-        withdrawn: totalWithdrawn,
-        pending: pendingCredits
-      },
-      transactions: ledgers
+      balances,
+      transactions
     }
   });
 });
 
-// Fire withdrawal and debit balance
+/**
+ * POST /creator/earnings/withdraw
+ * Fire withdrawal and log debit balance to ledger.
+ */
 const requestWithdrawal = asyncHandler(async (req, res, next) => {
   const creatorId = req.user.id;
   const { amount, payoutMethod } = req.body;
@@ -102,13 +102,8 @@ const requestWithdrawal = asyncHandler(async (req, res, next) => {
     return next(new AppError('Invalid withdrawal amount', 400));
   }
 
-  const ledgers = await EarningsLedger.find({ creatorId, status: 'cleared', transactionType: 'credit' });
-  const totalCleared = ledgers.reduce((a, b) => a + b.amount, 0);
-  
-  const previousWithdrawals = await EarningsLedger.find({ creatorId, transactionType: 'debit' });
-  const totalWithdrawn = previousWithdrawals.reduce((a, b) => a + b.amount, 0);
-
-  const availableBalance = totalCleared - totalWithdrawn;
+  const balances = await ledgerService.getCreatorBalances(creatorId);
+  const availableBalance = balances.available;
 
   if (amount > availableBalance) {
     return next(new AppError(`Insufficient cleared funds. Available: $${availableBalance}`, 400));
@@ -118,10 +113,12 @@ const requestWithdrawal = asyncHandler(async (req, res, next) => {
   try {
     session.startTransaction();
 
-    const request = await WithdrawalRequest.create([{
+    const withdrawalRequest = await Withdrawal.create([{
       creatorId,
       amount,
-      payoutMethod: payoutMethod || 'stripe'
+      payoutMethod: payoutMethod || 'stripe_connect',
+      status: 'pending',
+      requestedAt: new Date()
     }], { session });
 
     await EarningsLedger.create([{
@@ -133,7 +130,13 @@ const requestWithdrawal = asyncHandler(async (req, res, next) => {
     }], { session });
 
     await session.commitTransaction();
-    res.status(201).json({ status: 'success', data: { withdrawal: request[0] } });
+    res.status(201).json({ 
+      status: 'success', 
+      data: { 
+        withdrawal: withdrawalRequest[0],
+        balances: await ledgerService.getCreatorBalances(creatorId)
+      } 
+    });
   } catch (error) {
     await session.abortTransaction();
     throw error;
@@ -147,3 +150,4 @@ module.exports = {
   getCreatorLedger,
   requestWithdrawal
 };
+

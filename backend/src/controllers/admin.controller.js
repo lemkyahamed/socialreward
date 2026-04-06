@@ -83,8 +83,8 @@ const getWithdrawals = asyncHandler(async (req, res, next) => {
 });
 
 const updateWithdrawalStatus = asyncHandler(async (req, res, next) => {
-  const { status } = req.body;
-  const withdrawal = await adminService.updateWithdrawalStatus(req.user.id, req.params.id, status);
+  const { status, reason } = req.body;
+  const withdrawal = await adminService.updateWithdrawalStatus(req.user.id, req.params.id, status, reason);
   res.status(200).json({ status: 'success', data: { withdrawal } });
 });
 
