@@ -34,8 +34,8 @@ export function CreatorDashboard() {
   }
 
   // Fallbacks for data
-  const availableToWithdraw = earningsData?.paidOut || 0
-  const pendingEarnings = earningsData?.pendingPayout || 0
+  const availableToWithdraw = stats?.available || 0
+  const pendingEarnings = stats?.pending || 0
   const thisMonthEarnings = stats?.recentEarnings?.[stats?.recentEarnings?.length - 1]?.amount || 0
   const trustScore = user?.profile?.trustScore || 0
   const activeTrackedPosts = stats?.activeCampaigns || 0 // Reusing active campaigns as semantic match for now

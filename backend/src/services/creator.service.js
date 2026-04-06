@@ -16,46 +16,10 @@ const getDashboardStats = async (creatorId) => {
   const approvalsCount = await Submission.countDocuments({ creatorId, reviewStatus: 'approved' });
   const pendingApprovals = await Submission.countDocuments({ creatorId, reviewStatus: 'pending' });
 
-  const balances = await ledgerService.getCreatorBalances(creatorId);
-  const totalEarnings = balances.available + balances.withdrawn;
-
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-  sixMonthsAgo.setHours(0, 0, 0, 0);
-
-  const earningsAggregation = await EarningsLedger.aggregate([
-    {
-      $match: {
-        creatorId: new mongoose.Types.ObjectId(creatorId),
-        transactionType: 'credit',
-        status: { $in: ['cleared', 'withdrawn'] },
-        createdAt: { $gte: sixMonthsAgo }
-      }
-    },
-    {
-      $group: {
-        _id: { month: { $month: "$createdAt" }, year: { $year: "$createdAt" } },
-        amount: { $sum: "$amount" }
-      }
-    }
+  const [balances, recentEarnings] = await Promise.all([
+    ledgerService.getCreatorFinancialSummary(creatorId),
+    ledgerService.getRecentEarningsChart(creatorId)
   ]);
-
-  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const recentEarnings = [];
-  
-  for (let i = 0; i < 6; i++) {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - i));
-    const m = d.getMonth() + 1;
-    const y = d.getFullYear();
-    
-    const found = earningsAggregation.find(a => a._id.month === m && a._id.year === y);
-    recentEarnings.push({
-      month: monthNames[m - 1],
-      amount: found ? found.amount : 0
-    });
-  }
 
   const recentSubmissions = await Submission.find({ creatorId })
     .sort({ createdAt: -1 })
@@ -66,7 +30,10 @@ const getDashboardStats = async (creatorId) => {
     activeCampaigns: activeCampaignsCount,
     submissionsCount,
     pendingApprovals,
-    totalEarnings,
+    totalEarnings: balances.totalEarned,
+    available: balances.available,
+    pending: balances.pending,
+    withdrawn: balances.withdrawn,
     recentEarnings,
     recentSubmissions,
     reachLimit: "10K+" // fallback since reach is not modeled yet
@@ -236,15 +203,12 @@ const getSubmissions = async (creatorId, campaignId) => {
 
 const getEarnings = async (creatorId) => {
   const [balances, ledgers] = await Promise.all([
-    ledgerService.getCreatorBalances(creatorId),
+    ledgerService.getCreatorFinancialSummary(creatorId),
     ledgerService.getCreatorLedger(creatorId)
   ]);
 
   return {
-    totalEarned: balances.available + balances.withdrawn,
-    pendingPayout: balances.pending,
-    totalWithdrawn: balances.withdrawn,
-    balances,
+    ...balances,
     records: ledgers
   };
 };
