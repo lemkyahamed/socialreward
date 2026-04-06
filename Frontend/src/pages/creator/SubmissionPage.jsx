@@ -81,7 +81,9 @@ export function SubmissionPage() {
     if (!existingSubmission?._id) return;
     setIsSyncing(true)
     try {
+      // Execute REAL API call to backend sync endpoint
       await api.post(`/creator/submissions/${existingSubmission._id}/sync`);
+      // Fully refresh state from backend to reflect metrics update
       await refetch();
     } catch (err) {
       console.error("Sync error:", err);
@@ -107,7 +109,7 @@ export function SubmissionPage() {
     )
   }
 
-  // Safety fallbacks for Tracking View
+  // Canonical backend fields for metrics and status
   const reviewStatus = existingSubmission?.reviewStatus || "pending" 
   const trackingStatus = existingSubmission?.trackingStatus || "submitted"
   const metrics = existingSubmission?.metrics || { views: 0, likes: 0, comments: 0, shares: 0 }
