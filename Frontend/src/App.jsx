@@ -2,6 +2,10 @@ import React from "react"
 import { Routes, Route, Navigate, Outlet } from "react-router-dom"
 import { LayoutDashboard, Compass, Send, DollarSign, PlusSquare, Target, CheckSquare, Users, ShieldAlert, Activity, FileText, Wallet, Building, User } from "lucide-react"
 
+// Auth & Guards
+import { AuthProvider, useAuth } from "./contexts/AuthContext"
+import { ProtectedRoute, RequireOnboarding, RequirePayoutSetup } from "./components/auth/RouteGuards"
+
 // Layouts
 import { PublicLayout } from "./layouts/PublicLayout"
 import { DashboardLayout } from "./layouts/DashboardLayout"
@@ -15,8 +19,16 @@ import { About } from "./pages/public/About"
 import { FAQ } from "./pages/public/FAQ"
 
 // Creator Pages
+import { OnboardingWizard } from "./pages/creator/OnboardingWizard"
+import { CreatorDashboard } from "./pages/creator/CreatorDashboard"
+import { AvailableCampaigns } from "./pages/creator/AvailableCampaigns"
+import { JoinedCampaigns } from "./pages/creator/JoinedCampaigns"
 import { CreatorCampaignDetail } from "./pages/creator/CreatorCampaignDetail"
 import { MySubmissions } from "./pages/creator/MySubmissions"
+import { SubmissionPage } from "./pages/creator/SubmissionPage"
+import { EarningsPage } from "./pages/creator/EarningsPage"
+import { WithdrawalsPage } from "./pages/creator/WithdrawalsPage"
+import { PayoutSetup } from "./pages/creator/PayoutSetup"
 
 
 // Brand Pages
@@ -68,9 +80,6 @@ const adminNavItems = [
   { label: "System Logs", href: "/admin/logs", icon: Activity },
 ]
 
-// Add Auth logic and Reusable Guards
-import { AuthProvider, useAuth } from "./contexts/AuthContext"
-import { ProtectedRoute, RequireOnboarding, RequirePayoutSetup } from "./components/auth/RouteGuards"
 
 // Route Configuration Map wrapper to inject user details
 const AppRoutes = () => {
