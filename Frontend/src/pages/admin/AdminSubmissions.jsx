@@ -193,7 +193,7 @@ export function AdminSubmissions() {
                               variant="ghost" 
                               size="icon" 
                               className="h-10 w-10 text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10" 
-                              title="Force Approve & Credit Ledger"
+                              title="Approve Submission"
                             >
                               {processingId === sub._id ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
                             </Button>
@@ -251,7 +251,7 @@ export function AdminSubmissions() {
                 <BarChart3 className="h-7 w-7" />
               </div>
               <h3 className="font-display text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">Metric Override</h3>
-              <p className="mt-2 text-sm font-medium text-zinc-500">Inject mechanical data forces directly over API syncs.</p>
+              <p className="mt-2 text-sm font-medium text-zinc-500">Push new metrics into a pending state to be synced by the creator.</p>
             </div>
             
             <form onSubmit={handleMetricsSubmit} className="space-y-4">
@@ -293,7 +293,7 @@ export function AdminSubmissions() {
               <div className="flex gap-3 pt-6">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setMetricModal({ isOpen: false, data: null })}>Cancel</Button>
                 <Button type="submit" variant="primary" className="flex-1" disabled={processingId !== null}>
-                  {processingId === metricModal.data._id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Commit Injection"}
+                  {processingId === metricModal.data._id ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : "Push Pending Update"}
                 </Button>
               </div>
             </form>

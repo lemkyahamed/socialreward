@@ -400,25 +400,13 @@ const updateSubmissionReview = async (adminId, submissionId, status, reason) => 
   // Process Trust Engine hooks
   if (status === 'approved') {
     submission.payoutEligible = true;
-    const earningAmount = calculateEarnings(submission.campaignId, submission.metrics);
-    submission.calculatedEarnings = earningAmount;
     
-    // Explicit ledger credit mapping
-    await ledgerService.createLedgerCredit({
-      creatorId: submission.creatorId,
-      campaignId: submission.campaignId._id,
-      submissionId: submission._id,
-      amount: earningAmount,
-      status: 'cleared', // MVP behavior makes approved instantly cleared
-      description: `Admin Manual Approval: ${submission.campaignId.title}`
-    });
+    // Earnings calculation and ledger tracking are deferred to the creator sync metrics action.
 
     // Update campaign budget
     await Campaign.findByIdAndUpdate(submission.campaignId._id, {
       $inc: { 
-        'stats.approvals': 1,
-        spentBudget: earningAmount,
-        remainingBudget: -earningAmount
+        'stats.approvals': 1
       }
     });
 
@@ -447,7 +435,10 @@ const updateSubmissionReview = async (adminId, submissionId, status, reason) => 
 const updateSubmissionMetrics = async (adminId, submissionId, metrics) => {
   const submission = await Submission.findByIdAndUpdate(
     submissionId,
-    { metrics: { ...metrics } },
+    { 
+      pendingMetrics: { ...metrics, updatedAt: new Date() },
+      hasPendingMetricSync: true
+    },
     { new: true }
   );
 

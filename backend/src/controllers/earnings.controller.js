@@ -8,7 +8,7 @@ const { calculateEarnings } = require('../utils/earnings');
 const ledgerService = require('../services/ledger.service');
 const mongoose = require('mongoose');
 
-// Sync APIs dynamically to fetch live metrics and recalculate calculatedEarnings
+// Sync APIs dynamically to fetch pending admin metrics and recalculate calculatedEarnings
 const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
   const submissionId = req.params.id;
   const creatorId = req.user.id;
@@ -18,23 +18,28 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
     return next(new AppError('Submission not found', 404));
   }
 
-  // Mock API scrape mechanism (in production, integrate YouTube/TikTok APIs securely)
-  const mockScrape = {
-    views: Math.floor(Math.random() * 50000) + 1000,
-    likes: Math.floor(Math.random() * 5000) + 100,
-    comments: Math.floor(Math.random() * 500) + 10,
-    shares: Math.floor(Math.random() * 200) + 5
-  };
+  // Check if there are pending metrics to sync
+  if (!submission.hasPendingMetricSync || !submission.pendingMetrics) {
+    return res.status(200).json({ 
+      status: 'success', 
+      data: { submission }, 
+      message: 'Metrics are already up to date.' 
+    });
+  }
 
   const newMetrics = {
-    views: submission.metrics?.views > 0 ? submission.metrics.views : mockScrape.views,
-    likes: submission.metrics?.likes > 0 ? submission.metrics.likes : mockScrape.likes,
-    comments: submission.metrics?.comments > 0 ? submission.metrics.comments : mockScrape.comments,
-    shares: submission.metrics?.shares > 0 ? submission.metrics.shares : mockScrape.shares,
+    views: submission.pendingMetrics?.views ?? submission.metrics?.views ?? 0,
+    likes: submission.pendingMetrics?.likes ?? submission.metrics?.likes ?? 0,
+    comments: submission.pendingMetrics?.comments ?? submission.metrics?.comments ?? 0,
+    shares: submission.pendingMetrics?.shares ?? submission.metrics?.shares ?? 0,
     lastSyncedAt: new Date()
   };
 
   const calculatedEarnings = calculateEarnings(submission.campaignId, newMetrics);
+
+  submission.metrics = newMetrics;
+  submission.hasPendingMetricSync = false;
+  submission.calculatedEarnings = calculatedEarnings;
 
   // Auto-transition tracking status logically
   let newTrackingStatus = submission.trackingStatus;
@@ -42,8 +47,6 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
   else if (submission.trackingStatus === 'validating') newTrackingStatus = 'live';
   else if (submission.trackingStatus === 'live') newTrackingStatus = 'tracking';
 
-  submission.metrics = newMetrics;
-  submission.calculatedEarnings = calculatedEarnings;
   submission.trackingStatus = newTrackingStatus;
   await submission.save();
 
@@ -52,8 +55,6 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
     const existingLedger = await EarningsLedger.findOne({ submissionId });
     
     if (!existingLedger) {
-       // This shouldn't normally happen as approval creates the ledger entry, 
-       // but we handle it just in case.
       await ledgerService.createLedgerCredit({
         creatorId,
         submissionId: submission._id,

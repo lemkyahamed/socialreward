@@ -70,6 +70,17 @@ const submissionSchema = new mongoose.Schema(
       comments: { type: Number, default: 0 },
       shares: { type: Number, default: 0 },
       lastSyncedAt: { type: Date }
+    },
+    pendingMetrics: {
+      views: { type: Number, default: 0 },
+      likes: { type: Number, default: 0 },
+      comments: { type: Number, default: 0 },
+      shares: { type: Number, default: 0 },
+      updatedAt: { type: Date }
+    },
+    hasPendingMetricSync: {
+      type: Boolean,
+      default: false
     }
   },
   {

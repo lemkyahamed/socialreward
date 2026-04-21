@@ -100,11 +100,21 @@ export function MySubmissions() {
                       <p className="text-2xl font-black text-brand-600">${submission.calculatedEarnings?.toFixed(2) || "0.00"}</p>
                     </div>
                     <div className="flex flex-col gap-2">
+                      {submission.hasPendingMetricSync && (
+                        <div className="flex items-center gap-1.5 justify-center md:justify-end mb-1">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                          </span>
+                          <span className="text-[9px] uppercase font-bold text-amber-500 tracking-widest">Pending Sync</span>
+                        </div>
+                      )}
                       <Button 
                         onClick={() => handleSync(submission._id)} 
                         variant="outline" 
                         size="sm" 
                         className="w-full rounded-xl bg-white"
+                        disabled={!submission.hasPendingMetricSync}
                       >
                         <RefreshCw className="mr-2 h-3.5 w-3.5" /> Sync Metrics
                       </Button>

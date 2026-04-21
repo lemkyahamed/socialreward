@@ -177,9 +177,20 @@ export function SubmissionPage() {
                 </div>
                 
                 {isApproved && (
-                  <Button variant="outline" size="sm" onClick={handleSyncTracking} disabled={isSyncing} className="shadow-sm border-green-200 dark:border-green-900">
-                    <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} /> Sync APIs
-                  </Button>
+                  <div className="flex flex-col items-end gap-2">
+                    {existingSubmission.hasPendingMetricSync && (
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                        </span>
+                        <span className="text-[9px] uppercase font-bold text-amber-500 tracking-widest">Pending Update</span>
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" onClick={handleSyncTracking} disabled={isSyncing || !existingSubmission.hasPendingMetricSync} className="shadow-sm border-green-200 dark:border-green-900">
+                      <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} /> Sync APIs
+                    </Button>
+                  </div>
                 )}
               </div>
 
