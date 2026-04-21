@@ -33,6 +33,7 @@ router.get('/jobs', adminController.getJobs);
 router.get('/submissions', adminController.getSubmissions);
 router.patch('/submissions/:id/review', adminController.updateSubmissionReview);
 router.patch('/submissions/:id/metrics', adminController.updateSubmissionMetrics);
+router.delete('/submissions/:id', adminController.deleteSubmission);
 
 router.get('/withdrawals', adminController.getWithdrawals);
 router.patch('/withdrawals/:id/status', adminController.updateWithdrawalStatus);

@@ -557,6 +557,24 @@ const overrideUserTrustScore = async (adminId, userId, newScore) => {
   return profile;
 };
 
+const deleteSubmission = async (adminId, submissionId) => {
+  const submission = await Submission.findByIdAndDelete(submissionId);
+  if (!submission) throw new AppError('Submission not found', 404);
+
+  await AuditLog.create({
+    actorUserId: adminId,
+    entityType: 'Submission',
+    entityId: submissionId,
+    action: 'ADMIN_DELETE_SUBMISSION',
+    metadata: { 
+      creatorId: submission.creatorId,
+      campaignId: submission.campaignId
+    }
+  });
+
+  return true;
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -574,5 +592,6 @@ module.exports = {
   updateSubmissionMetrics,
   getWithdrawals,
   updateWithdrawalStatus,
-  overrideUserTrustScore
+  overrideUserTrustScore,
+  deleteSubmission
 };

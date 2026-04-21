@@ -94,6 +94,11 @@ const overrideUserTrustScore = asyncHandler(async (req, res, next) => {
   res.status(200).json({ status: 'success', data: { profile } });
 });
 
+const deleteSubmission = asyncHandler(async (req, res, next) => {
+  await adminService.deleteSubmission(req.user.id, req.params.id);
+  res.status(200).json({ status: 'success', data: null });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -111,5 +116,6 @@ module.exports = {
   updateSubmissionMetrics,
   getWithdrawals,
   updateWithdrawalStatus,
-  overrideUserTrustScore
+  overrideUserTrustScore,
+  deleteSubmission
 };

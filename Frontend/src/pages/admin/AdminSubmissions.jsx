@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Search, CheckCircle2, XCircle, Loader2, Edit3, Link as LinkIcon, BarChart3 } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Loader2, Edit3, Link as LinkIcon, BarChart3, Trash2 } from "lucide-react"
 import { PageHeader } from "../../components/shared/PageHeader"
 import { Input, Label } from "../../components/ui/Input"
 import { Button } from "../../components/ui/Button"
@@ -39,6 +39,20 @@ export function AdminSubmissions() {
     setProcessingId(id)
     try {
       await api.patch(`/admin/submissions/${id}/review`, { status, reason })
+      await refetch()
+    } catch(err) {
+      alert(err.response?.data?.message || err.message)
+    } finally {
+      setProcessingId(null)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this submission? This action cannot be undone.")) return;
+
+    setProcessingId(id)
+    try {
+      await api.delete(`/admin/submissions/${id}`)
       await refetch()
     } catch(err) {
       alert(err.response?.data?.message || err.message)
@@ -197,6 +211,16 @@ export function AdminSubmissions() {
                             )}
                           </>
                         )}
+                        <Button 
+                          onClick={() => handleDelete(sub._id)} 
+                          disabled={processingId === sub._id}
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-10 w-10 text-zinc-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors" 
+                          title="Permanently Delete Submission"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
