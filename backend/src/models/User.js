@@ -50,6 +50,16 @@ userSchema.methods.comparePassword = async function (candidatePassword, userPass
 // Index for performance
 userSchema.index({ role: 1, status: 1 });
 
+userSchema.virtual('profile', {
+  ref: 'CreatorProfile',
+  localField: '_id',
+  foreignField: 'userId',
+  justOne: true
+});
+
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
+
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;

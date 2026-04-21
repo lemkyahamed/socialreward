@@ -84,6 +84,7 @@ const getUsers = async (queryFilters) => {
   const skip = (page - 1) * limit;
 
   const users = await User.find(filter)
+    .populate('profile')
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit * 1);
@@ -102,7 +103,7 @@ const getUsers = async (queryFilters) => {
 };
 
 const updateUserStatus = async (adminId, userId, status) => {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).select('+refreshTokenVersion');
   if (!user) throw new AppError('User not found', 404);
 
   // Prevent admin self-suspend
@@ -392,7 +393,8 @@ const updateSubmissionReview = async (adminId, submissionId, status, reason) => 
 
   const reviewStatus = status === 'approved' ? 'approved' : 'rejected';
   submission.reviewStatus = reviewStatus;
-  submission.trackingStatus = status; // admin explicitly sets trackingStatus for now in this method
+  // Map review decision to the correct trackingStatus enum value
+  submission.trackingStatus = status === 'approved' ? 'completed' : 'rejected';
   if (reason) submission.notes = reason;
 
   // Process Trust Engine hooks
@@ -534,6 +536,7 @@ const overrideUserTrustScore = async (adminId, userId, newScore) => {
 
   // Directly mutate integer values overriding algorithmic hooks
   const boundedScore = Math.max(0, Math.min(100, newScore));
+  const oldScore = profile.trustScore;
   profile.trustScore = boundedScore;
   
   if (boundedScore < 40) profile.trustLabel = 'New';
@@ -548,7 +551,7 @@ const overrideUserTrustScore = async (adminId, userId, newScore) => {
     entityType: 'User',
     entityId: userId,
     action: `ADMIN_TRUST_OVERRIDE`,
-    metadata: { oldScore: profile.trustScore, newScore: boundedScore }
+    metadata: { oldScore, newScore: boundedScore }
   });
 
   return profile;

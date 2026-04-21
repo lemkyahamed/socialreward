@@ -90,9 +90,9 @@ export function AdminSubmissions() {
               }}
             >
               <option value="all">Any Status</option>
-              <option value="needs_review">Needs Review Only</option>
+              <option value="submitted">Submitted (Pending)</option>
               <option value="live">Live / Tracking</option>
-              <option value="approved">Approved</option>
+              <option value="completed">Completed</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
@@ -158,7 +158,7 @@ export function AdminSubmissions() {
                     {/* STATUS */}
                     <TableCell className="py-6">
                       <Badge 
-                        variant={sub.trackingStatus === 'approved' ? 'success' : sub.trackingStatus === 'rejected' ? 'danger' : sub.trackingStatus === 'needs_review' ? 'warning' : 'primary'} 
+                        variant={sub.trackingStatus === 'completed' ? 'success' : sub.trackingStatus === 'rejected' ? 'danger' : sub.trackingStatus === 'submitted' ? 'warning' : 'primary'} 
                         className="rounded-lg px-3 py-1 font-black uppercase tracking-tight"
                       >
                         {sub.trackingStatus?.replace(/_/g, ' ')}
@@ -168,10 +168,10 @@ export function AdminSubmissions() {
                     {/* ACTIONS */}
                     <TableCell className="px-8 py-6 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <a href={sub.postUrl} target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-zinc-800" title="View Source Post">
+                        <a href={sub.contentUrl} target="_blank" rel="noreferrer" className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 hover:text-brand-600 hover:bg-brand-50 transition-colors dark:hover:bg-zinc-800" title="View Source Post">
                           <LinkIcon className="h-5 w-5" />
                         </a>
-                        {sub.trackingStatus !== 'approved' && (
+                        {sub.trackingStatus !== 'completed' && (
                           <>
                             <Button 
                               onClick={() => handleReview(sub._id, 'approved')} 
