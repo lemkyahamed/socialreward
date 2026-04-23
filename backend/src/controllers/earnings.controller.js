@@ -4,8 +4,10 @@ const Submission = require('../models/Submission');
 const Campaign = require('../models/Campaign');
 const EarningsLedger = require('../models/EarningsLedger');
 const Withdrawal = require('../models/Withdrawal');
+const SuspiciousFlag = require('../models/SuspiciousFlag');
 const { calculateEarnings } = require('../utils/earnings');
 const ledgerService = require('../services/ledger.service');
+const { verifyMetricIncrease } = require('../services/mlVerification.service');
 const mongoose = require('mongoose');
 
 // Sync APIs dynamically to fetch pending admin metrics and recalculate calculatedEarnings
@@ -27,13 +29,59 @@ const syncSubmissionMetrics = asyncHandler(async (req, res, next) => {
     });
   }
 
+  const previousViews = submission.metrics?.views ?? 0;
+  const previousLikes = submission.metrics?.likes ?? 0;
+  const pendingViews = submission.pendingMetrics?.views ?? previousViews;
+  const pendingLikes = submission.pendingMetrics?.likes ?? previousLikes;
+
+  const viewIncrease = Math.max(0, pendingViews - previousViews);
+  const likeIncrease = Math.max(0, pendingLikes - previousLikes);
+
+  const lastSyncedAt = submission.metrics?.lastSyncedAt || submission.createdAt;
+  const hoursSinceLastCheck = Math.max(0.1, (new Date() - lastSyncedAt) / (1000 * 60 * 60));
+  
+  const likeViewRatio = viewIncrease > 0 ? (likeIncrease / viewIncrease) : 0;
+
+  const mlResult = await verifyMetricIncrease({
+    total_views: pendingViews,
+    total_likes: pendingLikes,
+    view_increase: viewIncrease,
+    like_increase: likeIncrease,
+    like_view_ratio: likeViewRatio,
+    hours_since_last_check: hoursSinceLastCheck
+  });
+
+  const verifiedViewsAdded = mlResult.verified_views_added ?? 0;
+  const verifiedLikesAdded = mlResult.verified_likes_added ?? 0;
+
   const newMetrics = {
-    views: submission.pendingMetrics?.views ?? submission.metrics?.views ?? 0,
-    likes: submission.pendingMetrics?.likes ?? submission.metrics?.likes ?? 0,
+    views: previousViews + verifiedViewsAdded,
+    likes: previousLikes + verifiedLikesAdded,
     comments: submission.pendingMetrics?.comments ?? submission.metrics?.comments ?? 0,
     shares: submission.pendingMetrics?.shares ?? submission.metrics?.shares ?? 0,
     lastSyncedAt: new Date()
   };
+
+  submission.mlVerification = {
+    prediction: mlResult.prediction,
+    confidence: mlResult.confidence,
+    verifiedViewsAdded,
+    verifiedLikesAdded,
+    checkedAt: new Date(),
+    modelVersion: mlResult.model_version
+  };
+
+  if (mlResult.prediction === 'suspicious') {
+    const existingFlag = await SuspiciousFlag.findOne({ submissionId: submission._id, status: 'open' });
+    if (!existingFlag) {
+      await SuspiciousFlag.create({
+        submissionId: submission._id,
+        flagType: 'ml_anomaly',
+        reason: 'ML Model detected highly suspicious metric ratios or engagement velocity.',
+        score: Math.round(mlResult.confidence * 100)
+      });
+    }
+  }
 
   const calculatedEarnings = calculateEarnings(submission.campaignId, newMetrics);
 

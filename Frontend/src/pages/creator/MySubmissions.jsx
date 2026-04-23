@@ -18,7 +18,7 @@ export function MySubmissions() {
       await refetch()
     } catch (err) {
       console.error(err)
-      alert("Sync failed")
+      alert(err.response?.data?.message || "Sync failed")
     }
   }
 
@@ -124,6 +124,13 @@ export function MySubmissions() {
                             <ExternalLink className="mr-2 h-3.5 w-3.5" /> View Content
                           </Button>
                         </a>
+                      )}
+                      {submission.mlVerification && !submission.hasPendingMetricSync && (
+                        <div className="mt-1 flex justify-center md:justify-end">
+                          <Badge variant={submission.mlVerification.prediction === 'suspicious' ? 'danger' : 'outline'} className="text-[9px] uppercase tracking-widest">
+                            Sync: {submission.mlVerification.prediction}
+                          </Badge>
+                        </div>
                       )}
                     </div>
                     <p className="text-[10px] text-center md:text-right text-zinc-400 font-medium">

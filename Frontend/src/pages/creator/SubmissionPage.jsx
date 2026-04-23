@@ -87,6 +87,7 @@ export function SubmissionPage() {
       await refetch();
     } catch (err) {
       console.error("Sync error:", err);
+      alert(err.response?.data?.message || "Sync failed")
     } finally {
       setIsSyncing(false)
     }
@@ -239,6 +240,18 @@ export function SubmissionPage() {
                         {metrics.lastSyncedAt ? new Date(metrics.lastSyncedAt).toLocaleTimeString() : 'Not synced yet'}
                       </p>
                     </div>
+                    {existingSubmission.mlVerification && (
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Core Sync Status</span>
+                        <p className="mt-1 font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                           {existingSubmission.mlVerification.prediction === 'suspicious' ? <AlertCircle className="h-4 w-4 text-red-500" /> : <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                           <span className={existingSubmission.mlVerification.prediction === 'suspicious' ? 'text-red-600' : 'text-green-600'}>
+                             {existingSubmission.mlVerification.prediction.toUpperCase()}
+                           </span>
+                           <span className="text-zinc-400 text-[10px]">({Math.round((existingSubmission.mlVerification.confidence || 0) * 100)}%)</span>
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-3">

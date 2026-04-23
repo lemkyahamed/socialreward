@@ -63,11 +63,11 @@ export function SuspiciousSubmissions() {
                 const sub = flag.submissionId;
                 if (!sub) return null; // Defensive check
                 return (
-                  <TableRow key={flag._id} className={`${flag.riskScore >= 80 ? "bg-red-50/20 dark:bg-red-950/20" : ""} border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors`}>
+                  <TableRow key={flag._id} className={`${flag.score >= 80 ? "bg-red-50/20 dark:bg-red-950/20" : ""} border-zinc-50 dark:border-zinc-800/50 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors`}>
                     <TableCell className="px-8 py-6">
-                      <Badge variant={flag.riskScore >= 80 ? "danger" : "warning"} className="flex w-max items-center gap-1.5 rounded-lg font-black uppercase tracking-tight">
+                      <Badge variant={flag.score >= 80 ? "danger" : "warning"} className="flex w-max items-center gap-1.5 rounded-lg font-black uppercase tracking-tight">
                         <AlertTriangle className="h-3.5 w-3.5" />
-                        {flag.riskScore >= 80 ? "High" : "Medium"} RISK
+                        {flag.score >= 80 ? "High" : "Medium"} RISK
                       </Badge>
                     </TableCell>
                     <TableCell className="py-6">

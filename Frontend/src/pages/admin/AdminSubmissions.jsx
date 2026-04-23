@@ -62,11 +62,15 @@ export function AdminSubmissions() {
   }
 
   const openMetricsEdit = (submission) => {
+    const sourceMetrics = submission.hasPendingMetricSync && submission.pendingMetrics
+      ? submission.pendingMetrics
+      : submission.metrics || {};
+      
     setMetricsForm({
-      views: submission.metrics?.views || 0,
-      likes: submission.metrics?.likes || 0,
-      comments: submission.metrics?.comments || 0,
-      shares: submission.metrics?.shares || 0
+      views: sourceMetrics.views || 0,
+      likes: sourceMetrics.likes || 0,
+      comments: sourceMetrics.comments || 0,
+      shares: sourceMetrics.shares || 0
     })
     setMetricModal({ isOpen: true, data: submission })
   }
@@ -163,9 +167,17 @@ export function AdminSubmissions() {
                             {sub.metrics?.likes?.toLocaleString() || 0} Likes
                           </span>
                         </div>
-                        <button onClick={() => openMetricsEdit(sub)} className="text-[10px] flex items-center font-bold text-zinc-400 hover:text-brand-500 transition-colors uppercase tracking-widest w-fit">
-                          <Edit3 className="h-3 w-3 mr-1" /> Override Stats
-                        </button>
+                        <div className="flex items-center gap-2 mt-2">
+                          <button onClick={() => openMetricsEdit(sub)} className="text-[10px] flex items-center font-bold text-zinc-400 hover:text-brand-500 transition-colors uppercase tracking-widest w-fit">
+                            <Edit3 className="h-3 w-3 mr-1" /> Update Pending Metrics
+                          </button>
+                          {sub.hasPendingMetricSync && (
+                            <span className="flex h-2 w-2 relative">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" title="Pending Sync"></span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
 

@@ -81,6 +81,18 @@ const submissionSchema = new mongoose.Schema(
     hasPendingMetricSync: {
       type: Boolean,
       default: false
+    },
+    mlVerification: {
+      prediction: {
+        type: String,
+        enum: ['natural', 'suspicious', 'not_checked'],
+        default: 'not_checked'
+      },
+      confidence: { type: Number },
+      verifiedViewsAdded: { type: Number },
+      verifiedLikesAdded: { type: Number },
+      checkedAt: { type: Date },
+      modelVersion: { type: String }
     }
   },
   {
